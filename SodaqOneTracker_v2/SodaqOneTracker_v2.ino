@@ -47,8 +47,8 @@ POSSIBILITY OF SUCH DAMAGE.
 
 //#define DEBUG
 
-#define PROJECT_NAME "SodaqOne Universal Tracker"
-#define VERSION "3.0"
+#define PROJECT_NAME "SodaqOne Universal Tracker v2"
+#define VERSION "4.0"
 #define STARTUP_DELAY 5000
 
 // #define DEFAULT_IS_OTAA_ENABLED 1
@@ -63,8 +63,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #define MAX_RTC_EPOCH_OFFSET 25
 
 #define ADC_AREF 3.3f
-#define BATVOLT_R1 2.0f
-#define BATVOLT_R2 2.0f
+#define BATVOLT_R1 4.7f
+#define BATVOLT_R2 10.0f
 
 #define TEMPERATURE_OFFSET 20.0
 
