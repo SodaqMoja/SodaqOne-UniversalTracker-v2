@@ -176,15 +176,14 @@ void setup()
     sodaq_wdt_enable(WDT_PERIOD_8X);
     sodaq_wdt_reset();
 
-    SerialUSB.begin(115200);
-    // override debug configuration
-#ifdef DEBUG
-    params._isDebugOn = true;
-#endif
+    CONSOLE_STREAM.begin(115200);
+    if (CONSOLE_STREAM != DEBUG_STREAM) {
+        DEBUG_STREAM.begin(115200);
+    }
 
     setLedColor(RED);
     sodaq_wdt_safe_delay(STARTUP_DELAY);
-    printBootUpMessage(SerialUSB);
+    printBootUpMessage(CONSOLE_STREAM);
 
     gpsFixLiFoRingBuffer_init();
     initSleep();
@@ -206,6 +205,11 @@ void setup()
     handleBootUpCommands();
     sodaq_wdt_enable(WDT_PERIOD_8X);
 
+    // make sure the debug option is honored
+    if (params.getIsDebugOn() && (CONSOLE_STREAM != DEBUG_STREAM)) {
+        DEBUG_STREAM.begin(115200);
+    }
+
     // make sure the GPS status honors the new user params
     if (!params.getIsGpsOn()) {
         isGpsInitialized = false; // force not to use GPS
@@ -222,14 +226,28 @@ void setup()
     consolePrintln("** Boot-up completed successfully!");
     sodaq_wdt_reset();
 
-    // disable the USB if the app is not in debug mode
-    if (!params.getIsDebugOn()) {
+    // disable the USB if not needed for debugging
+    if (!params.getIsDebugOn() || ((long)&DEBUG_STREAM != (long)&SerialUSB)) {
         consolePrintln("The USB is going to be disabled now.");
+        debugPrintln("The USB is going to be disabled now.");
+
         SerialUSB.flush();
         sodaq_wdt_safe_delay(3000);
         SerialUSB.end();
         USBDevice.detach();
         USB->DEVICE.CTRLA.reg &= ~USB_CTRLA_ENABLE; // Disable USB
+    }
+
+    // disable the debug stream if it is not disabled by the above
+    if (!params.getIsDebugOn() && ((long)&DEBUG_STREAM != (long)&SerialUSB)) {
+        DEBUG_STREAM.flush();
+        DEBUG_STREAM.end();
+    }
+
+    // disable the console stream if it is not disabled by the above
+    if ((long)&CONSOLE_STREAM != (long)&SerialUSB) {
+        CONSOLE_STREAM.flush();
+        CONSOLE_STREAM.end();
     }
 
     if (getGpsFixAndTransmit()) {
@@ -345,7 +363,7 @@ bool retryInitLora()
 {
     if (initLora(true)) {
         isLoraInitialized = true;
-        
+
         return true;
     }
 
@@ -557,7 +575,7 @@ bool initGps()
 
         found = ublox.exists();
     }
-    
+
     // check for success
     if (found) {
         setGpsActive(true); // properly turn on before returning
@@ -579,10 +597,12 @@ bool initGps()
  */
 void systemSleep()
 {
+    LORA_STREAM.flush();
+
     setLedColor(NONE);
     setGpsActive(false); // explicitly disable after resetting the pins
 
-    // go to sleep, unless USB is used for debug
+    // go to sleep, unless USB is used for debugging
     if (!params.getIsDebugOn() || DEBUG_STREAM != SerialUSB) {
         noInterrupts();
         if (!(sodaq_wdt_flag || minuteFlag)) {
@@ -794,10 +814,10 @@ void setLedColor(LedColor color)
 void delegateNavPvt(NavigationPositionVelocityTimeSolution* NavPvt)
 {
     sodaq_wdt_reset();
-    
+
     if (!isGpsInitialized) {
         debugPrintln("delegateNavPvt exiting because GPS is not initialized.");
-        
+
         return;
     }
 
@@ -841,7 +861,7 @@ bool getGpsFixAndTransmit()
 
     if (!isGpsInitialized) {
         debugPrintln("GPS is not initialized, exiting...");
-        
+
         return false;
     }
 
@@ -1077,6 +1097,11 @@ void onConfigReset(void)
 
     strcpy(params._nwSKeyOrAppKey, DEFAULT_NWSKEY_OR_APPKEY);
 #endif
+
+#ifdef DEBUG
+    params._isDebugOn = true;
+#endif
+
 }
 
 void getHWEUI()
