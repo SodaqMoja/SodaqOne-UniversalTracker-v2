@@ -38,6 +38,11 @@ void LIS3DE::disable()
     enable(true, LIS3DE::PowerDown, LIS3DE::NoAxis, false);
 }
 
+void LIS3DE::reboot()
+{
+    writeRegister(CTRL_REG5, 0b10000000);
+}
+
 uint8_t LIS3DE::readRegister(uint8_t reg)
 {
     Wire.beginTransmission(_address);

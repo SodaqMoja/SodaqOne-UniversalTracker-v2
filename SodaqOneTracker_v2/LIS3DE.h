@@ -78,6 +78,7 @@ class LIS3DE
         int8_t getTemperature(uint8_t temperatureOffset = LIS3DE_DEFAULT_TEMPERATURE_OFFSET);
         void enable(bool isLowPowerEnabled = false, ODR odr = NormalLowPower1Hz, Axes axes = AllAxes, bool isTemperatureOn = true);
         void disable();
+        void reboot();
     private:
         TwoWire& _wire;
         uint8_t _address;
