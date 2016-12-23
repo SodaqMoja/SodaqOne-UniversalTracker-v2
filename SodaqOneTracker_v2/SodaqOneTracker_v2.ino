@@ -599,7 +599,7 @@ void systemSleep()
     setGpsActive(false); // explicitly disable after resetting the pins
 
     // go to sleep, unless USB is used for debugging
-    if (!params.getIsDebugOn() || DEBUG_STREAM != SerialUSB) {
+    if (!params.getIsDebugOn() || ((long)&DEBUG_STREAM != (long)&SerialUSB)) {
         noInterrupts();
         if (!(sodaq_wdt_flag || minuteFlag)) {
             interrupts();
