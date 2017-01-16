@@ -54,6 +54,8 @@ public:
   static void show_string(const Command *a, Stream * stream);
   static void set_uint8(const Command *a, const char *line);
   static void show_uint8(const Command *a, Stream * stream);
+  static void set_int8(const Command *a, const char *line);
+  static void show_int8(const Command *a, Stream * stream);
   static void set_uint16(const Command *a, const char *line);
   static void show_uint16(const Command *a, Stream * stream);
   static void set_uint32(const Command *a, const char *line);

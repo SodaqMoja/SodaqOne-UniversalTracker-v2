@@ -71,6 +71,14 @@ void Command::set_string(const Command *s, const char *line)
   }
 }
 
+void Command::set_int8(const Command *s, const char *line)
+{
+    uint8_t *ptr = (uint8_t *)s->value;
+    if (ptr) {
+        *ptr = strtol(line, NULL, 0);
+    }
+}
+
 void Command::set_uint8(const Command *s, const char *line)
 {
   uint8_t *ptr = (uint8_t *)s->value;
@@ -114,6 +122,15 @@ void Command::show_string(const Command *s, Stream * stream)
   } else {
     stream->println();
   }
+}
+
+void Command::show_int8(const Command *s, Stream * stream)
+{
+    int8_t *ptr = (int8_t *)s->value;
+    if (ptr) {
+        show_name(s, stream);
+        stream->println(*ptr);
+    }
 }
 
 void Command::show_uint8(const Command *s, Stream * stream)
