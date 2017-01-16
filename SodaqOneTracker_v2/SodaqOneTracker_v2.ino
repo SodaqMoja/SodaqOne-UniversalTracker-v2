@@ -52,6 +52,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define STARTUP_DELAY 5000
 
 // #define DEFAULT_TEMPERATURE_SENSOR_OFFSET 33
+// #define DEFAULT_LORA_PORT 2
 // #define DEFAULT_IS_OTAA_ENABLED 1
 // #define DEFAULT_DEVADDR_OR_DEVEUI "0000000000000000"
 // #define DEFAULT_APPSKEY_OR_APPEUI "00000000000000000000000000000000"
@@ -67,13 +68,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #define BATVOLT_R1 4.7f
 #define BATVOLT_R2 10.0f
 
-#define TEMPERATURE_OFFSET 20.0
-
 #define DEBUG_STREAM SerialUSB
 #define CONSOLE_STREAM SerialUSB
 #define LORA_STREAM Serial1
 
-#define LORA_PORT 1
 #define LORA_MAX_RETRIES 3
 
 #define NIBBLE_TO_HEX_CHAR(i) ((i <= 9) ? ('0' + i) : ('A' - 10 + i))
@@ -383,7 +381,7 @@ void transmit()
     setLoraActive(true);
 
     for (uint8_t i = 0; i < 1 + params.getRepeatCount(); i++) {
-        if (loRaBeeSend(params.getIsAckOn(), LORA_PORT, sendBuffer, sendBufferSize) != 0) {
+        if (loRaBeeSend(params.getIsAckOn(), params.getLoraPort(), sendBuffer, sendBufferSize) != 0) {
             debugPrintln("There was an error while transmitting through LoRaWAN.");
         }
         else {
@@ -1057,6 +1055,10 @@ void onConfigReset(void)
 
 #ifdef DEFAULT_TEMPERATURE_SENSOR_OFFSET
     params._temperatureSensorOffset = DEFAULT_TEMPERATURE_SENSOR_OFFSET;
+#endif
+
+#ifdef DEFAULT_LORA_PORT
+    params._loraPort = DEFAULT_LORA_PORT;
 #endif
 
 #ifdef DEFAULT_IS_OTAA_ENABLED

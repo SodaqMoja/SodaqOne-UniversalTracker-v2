@@ -58,6 +58,7 @@ struct ConfigParams
     char _appSKeyOrEUI[32 + 1];
     char _nwSKeyOrAppKey[32 + 1];
 
+    uint8_t _loraPort;
     uint8_t _isAdrOn;
     uint8_t _isAckOn;
     uint8_t _spreadingFactor;
@@ -98,6 +99,7 @@ public:
     const char* getAppSKeyOrEUI() const { return _appSKeyOrEUI; }
     const char* getNwSKeyOrAppKey() const { return _nwSKeyOrAppKey; }
 
+    uint8_t getLoraPort() const { return _loraPort; }
     uint8_t getIsAdrOn() const{ return _isAdrOn; }
     uint8_t getIsAckOn() const{ return _isAckOn; }
     uint8_t getSpreadingFactor() const{ return _spreadingFactor; }

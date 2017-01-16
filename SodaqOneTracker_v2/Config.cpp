@@ -92,6 +92,7 @@ void ConfigParams::reset()
     _repeatCount = 0;
 
     _temperatureSensorOffset = 20;
+    _loraPort = 1;
     _isAdrOn = 1;
     _isAckOn = 0;
     _spreadingFactor = 7;
@@ -141,6 +142,7 @@ static const Command args[] = {
     { "ACK (OFF=0 / ON=1)        ", "ack=", Command::set_uint8, Command::show_uint8, &params._isAckOn },
     { "Spreading Factor          ", "sf=", Command::set_uint8, Command::show_uint8, &params._spreadingFactor },
     { "Output Index              ", "pwr=", Command::set_uint8, Command::show_uint8, &params._powerIndex },
+    { "Lora Port                 ", "lprt=", Command::set_uint8, Command::show_uint8, &params._loraPort },
     { "DevAddr / DevEUI          ", "dev=", Command::set_string, Command::show_string, params._devAddrOrEUI, sizeof(params._devAddrOrEUI) },
     { "AppSKey / AppEUI          ", "app=", Command::set_string, Command::show_string, params._appSKeyOrEUI, sizeof(params._appSKeyOrEUI) },
     { "NWSKey / AppKey           ", "key=", Command::set_string, Command::show_string, params._nwSKeyOrAppKey, sizeof(params._nwSKeyOrAppKey) },
