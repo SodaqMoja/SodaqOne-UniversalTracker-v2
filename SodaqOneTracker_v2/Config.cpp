@@ -91,6 +91,7 @@ void ConfigParams::reset()
     _coordinateUploadCount = 1;
     _repeatCount = 0;
 
+    _temperatureSensorOffset = 20;
     _isAdrOn = 1;
     _isAckOn = 0;
     _spreadingFactor = 7;
@@ -146,6 +147,7 @@ static const Command args[] = {
 
     { "Num Coords to Upload      ", "num=", Command::set_uint8, Command::show_uint8, &params._coordinateUploadCount },
     { "Repeat Count              ", "rep=", Command::set_uint8, Command::show_uint8, &params._repeatCount },
+    { "Temperature Sensor Offset ", "temp=", Command::set_int8, Command::show_int8, &params._temperatureSensorOffset },
     { "Status LED (OFF=0 / ON=1) ", "led=", Command::set_uint8, Command::show_uint8, &params._isLedEnabled },
     { "Debug (OFF=0 / ON=1)      ", "dbg=", Command::set_uint8, Command::show_uint8, &params._isDebugOn }
 };

@@ -49,6 +49,7 @@ struct ConfigParams
     uint8_t _alternativeFixToMinutes;
     uint16_t _gpsFixTimeout;
 
+    int8_t _temperatureSensorOffset;
     uint8_t _isLedEnabled;
     uint8_t _isOtaaEnabled;
     uint8_t _shouldRetryConnectionOnSend;
@@ -88,6 +89,7 @@ public:
     uint32_t getAlternativeFixTo() const { return _alternativeFixToHours * 60 * 60 + _alternativeFixToMinutes * 60; }
     uint16_t getGpsFixTimeout() const { return _gpsFixTimeout; }
 
+    int8_t getTemperatureSensorOffset() const { return _temperatureSensorOffset; };
     uint8_t getIsLedEnabled() const { return _isLedEnabled; }
     uint8_t getIsOtaaEnabled() const { return _isOtaaEnabled; }
     uint8_t getShouldRetryConnectionOnSend() const { return _shouldRetryConnectionOnSend; }
