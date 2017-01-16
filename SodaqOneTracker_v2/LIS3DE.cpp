@@ -5,7 +5,7 @@ LIS3DE::LIS3DE(TwoWire& wire, uint8_t address): _wire(wire), _address(address)
 
 }
 
-int8_t LIS3DE::getTemperature(uint8_t temperatureOffset)
+int8_t LIS3DE::getTemperatureDelta()
 {
     uint8_t originalReg4 = readRegister(LIS3DE::CTRL_REG4);
     writeRegister(LIS3DE::CTRL_REG4, 0b10000000); // BDU on
@@ -15,7 +15,7 @@ int8_t LIS3DE::getTemperature(uint8_t temperatureOffset)
     
     writeRegister(LIS3DE::CTRL_REG4, originalReg4);
     
-    return temperatureOffset + value;
+    return value;
 }
 
 void LIS3DE::enable(bool isLowPowerEnabled, ODR odr, Axes axes, bool isTemperatureOn)

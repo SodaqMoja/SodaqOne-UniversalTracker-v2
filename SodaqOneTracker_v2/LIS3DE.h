@@ -5,7 +5,6 @@
 #include <Wire.h>
 
 #define LIS3DE_ADDRESS 0b0101000
-#define LIS3DE_DEFAULT_TEMPERATURE_OFFSET 20
 
 class LIS3DE
 {
@@ -75,7 +74,7 @@ class LIS3DE
         };
         
         LIS3DE(TwoWire& wire = Wire, uint8_t address = LIS3DE_ADDRESS);
-        int8_t getTemperature(uint8_t temperatureOffset = LIS3DE_DEFAULT_TEMPERATURE_OFFSET);
+        int8_t getTemperatureDelta();
         void enable(bool isLowPowerEnabled = false, ODR odr = NormalLowPower1Hz, Axes axes = AllAxes, bool isTemperatureOn = true);
         void disable();
         void reboot();
@@ -88,4 +87,3 @@ class LIS3DE
 };
 
 #endif
-

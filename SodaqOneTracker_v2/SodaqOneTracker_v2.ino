@@ -51,6 +51,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define VERSION "4.0"
 #define STARTUP_DELAY 5000
 
+// #define DEFAULT_TEMPERATURE_SENSOR_OFFSET 33
 // #define DEFAULT_IS_OTAA_ENABLED 1
 // #define DEFAULT_DEVADDR_OR_DEVEUI "0000000000000000"
 // #define DEFAULT_APPSKEY_OR_APPEUI "00000000000000000000000000000000"
@@ -302,7 +303,7 @@ int8_t getBoardTemperature()
 {
     setAccelerometerActive(true);
 
-    int8_t temp = accelerometer.getTemperature();
+    int8_t temp = params.getTemperatureSensorOffset() + accelerometer.getTemperatureDelta();
 
     setAccelerometerActive(false);
 
@@ -1053,6 +1054,10 @@ static void printBootUpMessage(Stream& stream)
 void onConfigReset(void)
 {
     setDevAddrOrEUItoHWEUI();
+
+#ifdef DEFAULT_TEMPERATURE_SENSOR_OFFSET
+    params._temperatureSensorOffset = DEFAULT_TEMPERATURE_SENSOR_OFFSET;
+#endif
 
 #ifdef DEFAULT_IS_OTAA_ENABLED
     params._isOtaaEnabled = DEFAULT_IS_OTAA_ENABLED;
