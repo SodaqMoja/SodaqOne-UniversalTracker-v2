@@ -940,16 +940,35 @@ void setGpsActive(bool on)
         sodaq_wdt_safe_delay(80);
 
         PortConfigurationDDC pcd;
-        if (ublox.getPortConfigurationDDC(&pcd)) {
-            pcd.outProtoMask = 1; // Disable NMEA
-            ublox.setPortConfigurationDDC(&pcd);
 
-            ublox.CfgMsg(UBX_NAV_PVT, 1); // Navigation Position Velocity TimeSolution
-            ublox.funcNavPvt = delegateNavPvt;
+        uint8_t maxRetries = 6;
+        int8_t retriesLeft;
+
+        retriesLeft = maxRetries;
+        while (!ublox.getPortConfigurationDDC(&pcd) && (retriesLeft-- > 0)) {
+            debugPrintln("Retrying ublox.getPortConfigurationDDC(&pcd)...");
+            sodaq_wdt_safe_delay(15);
         }
-        else {
-            debugPrintln("uBlox.getPortConfigurationDDC(&pcd) failed!");
+        if (retriesLeft == -1) {
+            debugPrintln("ublox.getPortConfigurationDDC(&pcd) failed!");
+
+            return;
         }
+
+        pcd.outProtoMask = 1; // Disable NMEA
+        retriesLeft = maxRetries;
+        while (!ublox.setPortConfigurationDDC(&pcd) && (retriesLeft-- > 0)) {
+            debugPrintln("Retrying ublox.setPortConfigurationDDC(&pcd)...");
+            sodaq_wdt_safe_delay(15);
+        }
+        if (retriesLeft == -1) {
+            debugPrintln("ublox.setPortConfigurationDDC(&pcd) failed!");
+
+            return;
+        }
+
+        ublox.CfgMsg(UBX_NAV_PVT, 1); // Navigation Position Velocity TimeSolution
+        ublox.funcNavPvt = delegateNavPvt;
     }
     else {
         ublox.disable();
