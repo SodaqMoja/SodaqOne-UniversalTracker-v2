@@ -6,6 +6,8 @@
 
 #define LIS3DE_ADDRESS 0b0101000
 
+#define _BV(bit) (1 << (bit))
+
 class LIS3DE
 {
     public:
@@ -52,6 +54,50 @@ class LIS3DE
             ACT_DUR = 0x3F
         };
         
+        enum Bits {
+            // CTRL_REG1
+            ODR0 = 4,
+            LPen = 3,
+            Zen = 2,
+            Yen = 1,
+            Xen = 0,
+
+            // CTRL_REG3
+            INT1_CLICK = 7,
+            INT1_IG1 = 6,
+            INT1_IG2 = 5,
+            INT1_DRDY1 = 4,
+            INT1_DRDY2 = 3,
+            INT1_WTM = 2,
+            INT1_OVERRUN = 1,
+
+            // CTRL_REG4
+            BDU = 7,
+            FS0 = 4,
+            ST0 = 1,
+            SIM = 0,
+
+            // CTRL_REG5
+            BOOT = 7,
+            FIFO_EN = 6,
+            LIR_IG1 = 3,
+            D4D_IG1 = 2,
+            LIR_IG2 = 1,
+            D4D_IG2 = 0,
+
+            // CTRL_REG6
+            INT2_CLICK = 7,
+            INT2_IG1 = 6,
+            INT2_IG2 = 5,
+            INT2_BOOT = 4,
+            INT2_ACT = 3,
+            H_LACTIVE = 1,
+
+            // TEMP_CFG_REG
+            ADC_PD = 7,
+            TEMP_EN = 6,
+        };
+
         enum ODR {
             PowerDown = 0b000,
             NormalLowPower1Hz = 0b0001,
@@ -70,20 +116,64 @@ class LIS3DE
             X = 0b001,
             Y = 0b010,
             Z = 0b100,
-            AllAxes = X | Y | Z
+            XY = X | Y,
+            XZ = X | Z,
+            YZ = Y | Z,
+            XYZ = X | Y | Z
         };
         
+        enum Scale {
+            Scale2g = 0,
+            Scale4g = 0b01,
+            Scale8g = 0b10,
+            Scale16g = 0b11
+        };
+
+        enum AxesEvents {
+            ZHigh = _BV(5),
+            ZLow = _BV(4),
+            YHigh = _BV(3),
+            YLow = _BV(2),
+            XHigh = _BV(1),
+            XLow = _BV(0)
+        };
+
+        enum InterruptMode {
+            OrCombination = 0b00000000,
+            MovementRecognition = 0b01000000,
+            AndCombination = 0b10000000,
+            PositionRecognition = 0b11000000
+        };
+
         LIS3DE(TwoWire& wire = Wire, uint8_t address = LIS3DE_ADDRESS);
         int8_t getTemperatureDelta();
-        void enable(bool isLowPowerEnabled = false, ODR odr = NormalLowPower1Hz, Axes axes = AllAxes, bool isTemperatureOn = true);
+        void enable(bool isLowPowerEnabled = false, ODR odr = NormalLowPower25Hz, Axes axes = XYZ, Scale scale = Scale2g, bool isTemperatureOn = true);
         void disable();
         void reboot();
-    private:
-        TwoWire& _wire;
-        uint8_t _address;
+
+        void enableInterrupt1(uint8_t axesEvents, double threshold, uint8_t duration, InterruptMode interruptMode = MovementRecognition);
+        void disableInterrupt1();
+        void enableInterrupt2(uint8_t axesEvents, double threshold, uint8_t duration, InterruptMode interruptMode = MovementRecognition);
+        void disableInterrupt2();
         
+        double getX() { return getGsFromScaledValue(readRegister(LIS3DE::OUT_X)); };
+        double getY() { return getGsFromScaledValue(readRegister(LIS3DE::OUT_Y)); };
+        double getZ() { return getGsFromScaledValue(readRegister(LIS3DE::OUT_Z)); };
+
         uint8_t readRegister(uint8_t reg);
         void writeRegister(uint8_t reg, uint8_t value);
+        void setRegisterBits(Register reg, uint8_t byteValue);
+        void unsetRegisterBits(Register reg, uint8_t byteValue);
+protected:
+        TwoWire& _wire;
+        uint8_t _address;
+        Scale _scale;
+
+        void setScale(Scale scale);
+
+        double getGsFromScaledValue(int8_t value);
+        int8_t getScaledValueFromGs(double gValue);
+        int8_t getScaleMax(Scale scale);
 };
 
 #endif
