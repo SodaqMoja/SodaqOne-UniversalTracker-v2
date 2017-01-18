@@ -50,6 +50,7 @@ public:
   static int findCommand(const Command args[], uint8_t nr, const char *line);
 
   static void show_name(const Command *s, Stream * stream);
+  static void show_title(const Command *s, Stream * stream);
   static void set_string(const Command *a, const char *line);
   static void show_string(const Command *a, Stream * stream);
   static void set_uint8(const Command *a, const char *line);

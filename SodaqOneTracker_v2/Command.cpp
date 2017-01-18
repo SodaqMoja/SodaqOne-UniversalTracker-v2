@@ -113,6 +113,13 @@ void Command::show_name(const Command *s, Stream * stream)
   stream->print("): ");
 }
 
+void Command::show_title(const Command *s, Stream * stream)
+{
+    stream->println();
+    stream->print(s->name);
+    stream->println();
+}
+
 void Command::show_string(const Command *s, Stream * stream)
 {
   char *ptr = (char *)s->value;
