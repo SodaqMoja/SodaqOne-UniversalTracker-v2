@@ -110,12 +110,15 @@ ReportDataRecord pendingReportDataRecord;
 bool isPendingReportDataRecordNew; // this is set to true only when pendingReportDataRecord is written by the delegate
 
 volatile bool minuteFlag;
+volatile bool isOnTheMoveActivated;
+volatile uint32_t lastOnTheMoveActivationTimestamp;
 
 static uint8_t lastResetCause;
 static bool isGpsInitialized;
 static bool isLoraInitialized;
 static bool isRtcInitialized;
 static bool isDeviceInitialized;
+static bool isOnTheMoveInitialized;
 static int64_t rtcEpochDelta; // set in setNow() and used in getGpsFixAndTransmit() for correcting time in loop
 
 static uint8_t receiveBuffer[16];
@@ -133,12 +136,14 @@ uint32_t getNow();
 void setNow(uint32_t now);
 void handleBootUpCommands();
 void initRtc();
+void accelerometerInt1Handler();
 void rtcAlarmHandler();
 void initRtcTimer();
 void resetRtcTimerEvents();
 void initSleep();
 bool initLora(bool suppressMessages = false);
 bool initGps();
+void initOnTheMove();
 void systemSleep();
 void runDefaultFixEvent(uint32_t now);
 void runAlternativeFixEvent(uint32_t now);
@@ -146,7 +151,7 @@ void runLoraModuleSleepExtendEvent(uint32_t now);
 void setLedColor(LedColor color);
 void setGpsActive(bool on);
 void setLoraActive(bool on);
-void setAccelerometerActive(bool on);
+void setAccelerometerTempSensorActive(bool on);
 bool convertAndCheckHexArray(uint8_t* result, const char* hex, size_t resultSize);
 bool isAlternativeFixEventApplicable();
 bool isCurrentTimeOfDayWithin(uint32_t daySecondsFrom, uint32_t daySecondsTo);
@@ -163,7 +168,6 @@ void onConfigReset(void);
 
 static void printCpuResetCause(Stream& stream);
 static void printBootUpMessage(Stream& stream);
-
 
 void setup()
 {
@@ -218,6 +222,12 @@ void setup()
     }
 
     isLoraInitialized = initLora();
+    if (params.getAccelerationPercentage() > 0) {
+        initOnTheMove();
+
+        isOnTheMoveInitialized = true;
+    }
+
     initRtcTimer();
 
     isDeviceInitialized = true;
@@ -299,11 +309,11 @@ uint8_t getBatteryVoltage()
 */
 int8_t getBoardTemperature()
 {
-    setAccelerometerActive(true);
+    setAccelerometerTempSensorActive(true);
 
     int8_t temp = params.getTemperatureSensorOffset() + accelerometer.getTemperatureDelta();
 
-    setAccelerometerActive(false);
+    setAccelerometerTempSensorActive(false);
 
     return temp;
 }
@@ -588,6 +598,24 @@ bool initGps()
 }
 
 /**
+* Initializes the on-the-move functionality (interrupt on acceleration).
+*/
+void initOnTheMove()
+{
+    pinMode(ACCEL_INT1, INPUT);
+    attachInterrupt(ACCEL_INT1, accelerometerInt1Handler, CHANGE);
+
+    accelerometer.enable(true, LIS3DE::NormalLowPower10Hz, LIS3DE::XYZ, LIS3DE::Scale8g, true);
+    sodaq_wdt_safe_delay(100);
+
+    accelerometer.enableInterrupt1(
+        LIS3DE::XHigh | LIS3DE::XLow | LIS3DE::YHigh | LIS3DE::YLow | LIS3DE::ZHigh | LIS3DE::ZLow, 
+        params.getAccelerationPercentage() * 8.0 / 100.0, 
+        params.getAccelerationDuration(),
+        LIS3DE::MovementRecognition);
+}
+
+/**
  * Powers down all devices and puts the system to deep sleep.
  */
 void systemSleep()
@@ -680,6 +708,20 @@ void rtcAlarmHandler()
 }
 
 /**
+ * Runs every time acceleration is over the limits 
+ * set by the user (if enabled).
+*/
+void accelerometerInt1Handler()
+{
+    if (digitalRead(ACCEL_INT1)) {
+        debugPrintln("On-the-move is triggered");
+
+        isOnTheMoveActivated = true;
+        lastOnTheMoveActivationTimestamp = getNow();
+    }
+}
+
+/**
  * Initializes the RTC Timer and schedules the default events.
  */
 void initRtcTimer()
@@ -704,6 +746,10 @@ void resetRtcTimerEvents()
     if (params.getAlternativeFixInterval() > 0) {
         // Schedule the alternative fix event
         timer.every(params.getAlternativeFixInterval() * 60, runAlternativeFixEvent);
+    }
+
+    if (isOnTheMoveInitialized) {
+        timer.every(params.getOnTheMoveFixInterval() * 60, runOnTheMoveFixEvent);
     }
 
     // if lora is not enabled, schedule an event that takes care of extending the sleep time of the module
@@ -756,6 +802,24 @@ void runAlternativeFixEvent(uint32_t now)
     if (isAlternativeFixEventApplicable()) {
         debugPrintln("Alternative fix event started.");
         getGpsFixAndTransmit();
+    }
+}
+
+/**
+* Runs the "moving" fix event sequence (only if enabled, device is on the move and timeout hasn't elapsed).
+*/
+void runOnTheMoveFixEvent(uint32_t now)
+{
+    if (isOnTheMoveActivated) {
+        if (now - lastOnTheMoveActivationTimestamp < params.getOnTheMoveTimeout() * 60) {
+            debugPrintln("On-the-move fix event started.");
+            getGpsFixAndTransmit();
+        }
+        else {
+            // timeout elapsed -disable it completely until there is another on-the-move interrupt triggered
+            debugPrintln("On-the-move has timed-out (no movement) -disabling.");
+            isOnTheMoveActivated = false;
+        }
     }
 }
 
@@ -991,12 +1055,19 @@ void setLoraActive(bool on)
 }
 
 /**
-* Initializes the accelerometer or puts it in power-down mode.
+ * Initializes the accelerometer or puts it in power-down mode
+ * for the purpose of reading its temperature delta.
 */
-void setAccelerometerActive(bool on)
+void setAccelerometerTempSensorActive(bool on)
 {
+    // if on-the-move is initialized then the accelerometer is enabled anyway
+    if (isOnTheMoveInitialized) {
+        return;
+    }
+
     if (on) {
-        accelerometer.enable();
+        accelerometer.enable(false, LIS3DE::NormalLowPower100Hz, LIS3DE::XYZ, LIS3DE::Scale2g, true);
+        sodaq_wdt_safe_delay(30); // should be enough for initilization and 2 measurement periods
     }
     else {
         accelerometer.disable();

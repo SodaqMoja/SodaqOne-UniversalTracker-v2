@@ -49,6 +49,11 @@ struct ConfigParams
     uint8_t _alternativeFixToMinutes;
     uint16_t _gpsFixTimeout;
 
+    uint8_t _accelerationPercentage;
+    uint8_t _accelerationDuration;
+    uint8_t _onTheMoveFixInterval;
+    uint8_t _onTheMoveTimeout;
+
     int8_t _temperatureSensorOffset;
     uint8_t _isLedEnabled;
     uint8_t _isOtaaEnabled;
@@ -89,6 +94,11 @@ public:
     uint8_t getAlternativeFixToMinutes() const { return _alternativeFixToMinutes; }
     uint32_t getAlternativeFixTo() const { return _alternativeFixToHours * 60 * 60 + _alternativeFixToMinutes * 60; }
     uint16_t getGpsFixTimeout() const { return _gpsFixTimeout; }
+
+    uint8_t getAccelerationPercentage() const { return _accelerationPercentage; }
+    uint8_t getAccelerationDuration() const { return _accelerationDuration; }
+    uint8_t getOnTheMoveFixInterval() const { return _onTheMoveFixInterval; }
+    uint8_t getOnTheMoveTimeout() const { return _onTheMoveTimeout; }
 
     int8_t getTemperatureSensorOffset() const { return _temperatureSensorOffset; };
     uint8_t getIsLedEnabled() const { return _isLedEnabled; }

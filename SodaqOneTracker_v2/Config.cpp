@@ -91,6 +91,11 @@ void ConfigParams::reset()
     _coordinateUploadCount = 1;
     _repeatCount = 0;
 
+    _accelerationPercentage = 0;
+    _accelerationDuration = 0;
+    _onTheMoveFixInterval = 1;
+    _onTheMoveTimeout = 10;
+
     _temperatureSensorOffset = 20;
     _loraPort = 1;
     _isAdrOn = 1;
@@ -137,6 +142,11 @@ static const Command args[] = {
     { "GPS Fix Timeout (sec)     ", "gft=", Command::set_uint16, Command::show_uint16, &params._gpsFixTimeout },
     { "Minimum sat count         ", "sat=", Command::set_uint8, Command::show_uint8, &params._gpsMinSatelliteCount },
     { "Num Coords to Upload      ", "num=", Command::set_uint8, Command::show_uint8, &params._coordinateUploadCount },
+    { "On-the-move Functionality ", 0,      0,                  Command::show_title, 0 },
+    { "Acceleration% (100% = 8g) ", "acc=", Command::set_uint8, Command::show_uint8, &params._accelerationPercentage },
+    { "Acceleration Duration     ", "acd=", Command::set_uint8, Command::show_uint8, &params._accelerationDuration },
+    { "Fix Interval (min)        ", "acf=", Command::set_uint8, Command::show_uint8, &params._onTheMoveFixInterval },
+    { "Timeout (min)             ", "act=", Command::set_uint8, Command::show_uint8, &params._onTheMoveTimeout },
     { "LoRa                      ", 0,      0,                  Command::show_title, 0 },
     { "OTAA Mode (OFF=0 / ON=1)  ", "otaa=", Command::set_uint8, Command::show_uint8, &params._isOtaaEnabled },
     { "Retry conn. (OFF=0 / ON=1)", "retry=", Command::set_uint8, Command::show_uint8, &params._shouldRetryConnectionOnSend },
@@ -247,6 +257,11 @@ bool ConfigParams::checkConfig(Stream& stream)
 
     if (_isDebugOn > 1) {
         stream.println("Debug must be either 0 or 1");
+        fail = true;
+    }
+
+    if (_accelerationPercentage > 100) {
+        stream.println("Acceleration% must not be more than 100");
         fail = true;
     }
 
