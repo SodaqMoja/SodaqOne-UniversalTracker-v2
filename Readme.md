@@ -1,4 +1,4 @@
-# SODAQ ONE Tracker specs
+# SODAQ ONE Tracker v2
 
 Note: to be able to compile this application you need to add the right board file to your Arduino IDE.
 
@@ -8,13 +8,13 @@ http://downloads.sodaq.net/package_sodaq_index.json
 
 ##  Configuration Menu
 
-After compiling the sourcecode and loading it onto the board you will be able to configure the board through a menu.
+After compiling the source code and uploading it to the board you will be able to configure the board through a menu.
 
 Just open the Arduino Serial Monitor (at 9600 baud) and you will get this menu:
 ```
-** SodaqOne Universal Tracker - 3.0 **
-LoRa HWEUI: 0004012345678900
- -> CPU reset by Power On Reset [1]
+** SodaqOne Universal Tracker v2 - 4.1 **
+LoRa HWEUI: 0004A30B00198185
+ -> CPU reset by Software [64]
 
 
 Commands:
@@ -22,6 +22,8 @@ Commands:
   Commit Settings (CS): 
 
 Settings:
+
+GPS                       
   GPS (OFF=0 / ON=1)         (gps=): 1
   Fix Interval (min)         (fi=): 15
   Alt. Fix Interval (min)    (afi=): 0
@@ -31,17 +33,29 @@ Settings:
   Alt. Fix To (MM)           (aftm=): 0
   GPS Fix Timeout (sec)      (gft=): 120
   Minimum sat count          (sat=): 4
+  Num Coords to Upload       (num=): 1
+
+On-the-move Functionality 
+  Acceleration% (100% = 8g)  (acc=): 0
+  Acceleration Duration      (acd=): 0
+  Fix Interval (min)         (acf=): 1
+  Timeout (min)              (act=): 10
+
+LoRa                      
   OTAA Mode (OFF=0 / ON=1)   (otaa=): 0
   Retry conn. (OFF=0 / ON=1) (retry=): 0
   ADR (OFF=0 / ON=1)         (adr=): 1
   ACK (OFF=0 / ON=1)         (ack=): 0
   Spreading Factor           (sf=): 7
   Output Index               (pwr=): 1
-  DevAddr / DevEUI           (dev=): 0004A30B001B410C
+  Lora Port                  (lprt=): 1
+  DevAddr / DevEUI           (dev=): 0004A30B00198185
   AppSKey / AppEUI           (app=): 00000000000000000000000000000000
   NWSKey / AppKey            (key=): 00000000000000000000000000000000
-  Num Coords to Upload       (num=): 1
   Repeat Count               (rep=): 0
+
+Misc                      
+  Temperature Sensor Offset  (temp=): 20
   Status LED (OFF=0 / ON=1)  (led=): 0
   Debug (OFF=0 / ON=1)       (dbg=): 0
 Enter command: 
@@ -55,31 +69,13 @@ Entering commands is just a matter of typing the command as given in brackets wi
 fi=5
 
 Will set the time between the GPS fixes to 5 minutes.
-
-The following parameters must be configurable through the menu:
-
-**Configuration Parameters**
-
-| Description | Length |
-| --- | --- |
-| Fix Interval  default | Minutes |
-| Fix Interval alternate | Minutes |
-| From | time HH:MM |
-| To | time HH:MM |
-| GPS fix timeout | seconds |
-| DEVADDR |   |
-| APPSKEY |   |
-| NWSKEY |   |
-| Number of coordinates to upload (1-4) |   |
-| Repeat count (default 0) |   |
-
-The LoRa communication must only start when the keys are not 0 (which is the default)
+Setting fi=0 will disable the default fix interval.
 
 #### Sleep
 After the startup the device by default willt be in deep sleep mode. In sleep it uses less than 50 uA. Using the RTC Timers it will wake up at the set intervals.
 
 #### Timers and Watchdog
-The application is based on the RTCTimer library. At startup the applicationtriesobtain a GPS fix until timeout. If no fix can be obtained initially the location will be set to 0,0. Once the first fix is obtained the RTC will be set and that fix location will be kept until the next proper fix.
+The application is based on the RTCTimer library. At startup the application tries to obtain a GPS fix until timeout. If no fix can be obtained initially the location will be set to 0,0. Once the first fix is obtained the RTC will be set and that fix location will be kept until the next proper fix.
 
 There is a system watchdog running in case the application hangs it will be restarted by the watchdog. (See library Sodaq\_wdt)
 
@@ -93,19 +89,27 @@ the best GPS fix found (if any) is used.
 
 For redundancy we could configure a repeat count. The value of the repeat count tells us to send the Lora frame an additional number of times (default 0) for redundancy.
 
-The Lora frame should contain the below data. The minimum frame size is 21 bytes, the maximum frame size 51 bytes, depending on the number of coordinates we have configured to be sent.
+The Lora frame contains the following data. The minimum frame size is 21 bytes, the maximum frame size 51 bytes, depending on the number of coordinates we have configured to be sent.
 
 #### LoRa Connection
+
+The LoRa communication only starts if the keys are not 0 (0 is the default)
 If 'Retry conn.' is on, then in case the connection to the network is not successful (useful for OTAA), the application will retry to connect the next time there is a pending transmission.
 
+#### Temperature
 
+The on-board accelerometer provides temperature delta with 1 degree Celsius resolution. It is not factory calibrated so the offset needs to be set in the application (command "temp" or it can be hardcoded in the code) for each board.
+
+#### On-the-move Functionality
+
+The firmware supports, except for the default and alternative fix intervals, a third fix interval that is dependent to movement: if the acceleration on any axis goes over (or below in the case of a negative axis) the acceleration set in Acceleration% parameter for over the set duration, the on-the-move fix interval becomes active until "Timeout" minutes have passed since the last movement detected.
 
 
 #### LoRa Frame content
 
 | Description | Length |
 | --- | --- |
-| Epoch Timestamp | long (4) |
+| Epoch Timestamp | uint32 (4) |
 | Battery voltage (between 3 and 4.5 V) | uint8 (1) |
 | Board Temperature (degrees celcius) | int8 (1) |
 | Lat | int32 (4) |

@@ -48,7 +48,7 @@ POSSIBILITY OF SUCH DAMAGE.
 //#define DEBUG
 
 #define PROJECT_NAME "SodaqOne Universal Tracker v2"
-#define VERSION "4.0"
+#define VERSION "4.1"
 #define STARTUP_DELAY 5000
 
 // #define DEFAULT_TEMPERATURE_SENSOR_OFFSET 33
@@ -741,7 +741,7 @@ void resetRtcTimerEvents()
 
     // Schedule the default fix event (if applicable)
     if (params.getDefaultFixInterval() > 0) {
-    timer.every(params.getDefaultFixInterval() * 60, runDefaultFixEvent);
+        timer.every(params.getDefaultFixInterval() * 60, runDefaultFixEvent);
     }
 
     // check if the alternative fix event should be scheduled at all
