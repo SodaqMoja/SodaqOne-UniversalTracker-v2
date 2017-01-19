@@ -739,8 +739,10 @@ void resetRtcTimerEvents()
 {
     timer.clearAllEvents();
 
-    // Schedule the default fix event
+    // Schedule the default fix event (if applicable)
+    if (params.getDefaultFixInterval() > 0) {
     timer.every(params.getDefaultFixInterval() * 60, runDefaultFixEvent);
+    }
 
     // check if the alternative fix event should be scheduled at all
     if (params.getAlternativeFixInterval() > 0) {
