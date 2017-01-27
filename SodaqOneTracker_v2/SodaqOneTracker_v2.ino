@@ -1186,15 +1186,17 @@ void getHWEUI()
 {
     // only read the HWEUI once
     if (!isLoraHWEuiInitialized) {
-        initLora(true);
+        if (initLora(true)) {
         sodaq_wdt_safe_delay(10);
         setLoraActive(true);
         uint8_t len = LoRaBee.getHWEUI(loraHWEui, sizeof(loraHWEui));
-        setLoraActive(false);
 
         if (len == sizeof(loraHWEui)) {
             isLoraHWEuiInitialized = true;
         }
+    }
+
+        setLoraActive(false); // make sure it is disabled in any case
     }
 }
 
