@@ -50,7 +50,8 @@ Sodaq_RN2483::Sodaq_RN2483() :
     inputBufferSize(DEFAULT_INPUT_BUFFER_SIZE),
     receivedPayloadBufferSize(DEFAULT_RECEIVED_PAYLOAD_BUFFER_SIZE),
     packetReceived(false),
-    isRN2903(false)
+    isRN2903(false),
+    resetPin(-1)
 {
 #ifdef USE_DYNAMIC_BUFFER
     this->isBufferInitialized = false;
@@ -229,11 +230,12 @@ void Sodaq_RN2483::wakeUp()
 
     // "emulate" break condition
     this->loraStream->flush();
-    this->loraStream->end();
+
     this->loraStream->begin(300);
     this->loraStream->write((uint8_t)0x00);
     this->loraStream->flush();
-    this->loraStream->end();
+
+    sodaq_wdt_safe_delay(50);
 
     // set baudrate
     this->loraStream->begin(getDefaultBaudRate());
@@ -295,12 +297,30 @@ bool Sodaq_RN2483::expectOK()
     return expectString(STR_RESULT_OK);
 }
 
+void Sodaq_RN2483::hardwareReset()
+{
+    debugPrintLn("[hardwareReset]");
+
+    if (resetPin < 0) {
+        debugPrintLn("[hardwareReset] The reset pin is not set. Skipping.");
+        return;
+    }
+
+    // set pin mode every time to avoid constraining the user about when the pin is initialized
+    pinMode(resetPin, OUTPUT);
+    digitalWrite(resetPin, LOW);
+    sodaq_wdt_safe_delay(150);
+    digitalWrite(resetPin, HIGH);
+}
+
 // Sends a reset command to the module and waits for the success response (or timeout).
 // Also sets-up some initial parameters like power index, SF and FSB channels.
 // Returns true on success.
 bool Sodaq_RN2483::resetDevice()
 {
     debugPrintLn("[resetDevice]");
+
+    hardwareReset();
 
     this->loraStream->print(STR_CMD_RESET);
     this->loraStream->print(CRLF);
