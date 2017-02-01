@@ -105,6 +105,12 @@ public:
     // Sets the optional "Diagnostics and Debug" stream.
     void setDiag(Stream& stream) { diagStream = &stream; };
 
+    // Enables resetting the module.
+    void enableReset(uint8_t resetPin) { this->resetPin = resetPin; };
+
+    // Performs a hardware reset (using the reset pin -if available).
+    void hardwareReset();
+
     // Sends the given payload without acknowledgement.
     // Returns 0 (NoError) when transmission is successful or one of the MacTransmitErrorCodes otherwise.
     uint8_t send(uint8_t port, const uint8_t* payload, uint8_t size);
@@ -206,6 +212,9 @@ private:
     char inputBuffer[DEFAULT_INPUT_BUFFER_SIZE];
     char receivedPayloadBuffer[DEFAULT_RECEIVED_PAYLOAD_BUFFER_SIZE];
 #endif
+
+    // Used for resetting the module on init.
+    int8_t resetPin;
 
     // Takes care of the init tasks common to both initOTA() and initABP.
     inline void init(SerialType& stream);
