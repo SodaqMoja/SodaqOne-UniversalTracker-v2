@@ -73,6 +73,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #define CONSOLE_STREAM SerialUSB
 #define LORA_STREAM Serial1
 
+#define CONSOLE_BAUD 115200
+#define DEBUG_BAUD 115200 // only used when CONSOLE is different that debug, otherwise console baud is used only
+
 #define LORA_MAX_RETRIES 3
 
 #define NIBBLE_TO_HEX_CHAR(i) ((i <= 9) ? ('0' + i) : ('A' - 10 + i))
@@ -171,9 +174,9 @@ void setup()
     sodaq_wdt_enable(WDT_PERIOD_8X);
     sodaq_wdt_reset();
 
-    CONSOLE_STREAM.begin(115200);
-    if (CONSOLE_STREAM != DEBUG_STREAM) {
-        DEBUG_STREAM.begin(115200);
+    CONSOLE_STREAM.begin(CONSOLE_BAUD);
+    if ((long)&CONSOLE_STREAM != (long)&DEBUG_STREAM) {
+        DEBUG_STREAM.begin(DEBUG_BAUD);
     }
 
     setLedColor(RED);
@@ -201,8 +204,8 @@ void setup()
     sodaq_wdt_enable(WDT_PERIOD_8X);
 
     // make sure the debug option is honored
-    if (params.getIsDebugOn() && (CONSOLE_STREAM != DEBUG_STREAM)) {
-        DEBUG_STREAM.begin(115200);
+    if (params.getIsDebugOn() && ((long)&CONSOLE_STREAM != (long)&DEBUG_STREAM)) {
+        DEBUG_STREAM.begin(DEBUG_BAUD);
     }
 
     // make sure the GPS status honors the new user params
