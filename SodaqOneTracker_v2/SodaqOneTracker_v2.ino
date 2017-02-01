@@ -480,6 +480,8 @@ bool initLora(bool supressMessages)
         consolePrintln("Initializing LoRa...");
     }
 
+    LoRaBee.enableReset(LORA_RESET); // set it up before calling init to benefit from auto reset
+
     LORA_STREAM.begin(LoRaBee.getDefaultBaudRate());
     if (params.getIsDebugOn()) {
         LoRaBee.setDiag(DEBUG_STREAM);
