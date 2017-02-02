@@ -46,8 +46,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "LIS3DE.h"
 #include "LedColor.h"
 #include "Enums.h"
+#include "CayenneLPP.h"
 
 //#define DEBUG
+//#define CAYENNE
 
 #define PROJECT_NAME "SodaqOne Universal Tracker v2"
 #define VERSION "4.4"
@@ -128,6 +130,7 @@ static uint8_t sendBufferSize;
 static uint8_t loraHWEui[8];
 static bool isLoraHWEuiInitialized;
 
+CayenneLPP CayenneRecord(51); // buffer is set to the same size as the sendBuffer[]
 
 void setup();
 void loop();
@@ -324,6 +327,28 @@ int8_t getBoardTemperature()
  */
 void updateSendBuffer()
 {
+    #ifdef CAYENNE
+    // Reset the record
+    CayenneRecord.reset();
+
+    // Add GPS record on data channel 1
+    float latitude = (float)pendingReportDataRecord.getLat() / 10000000.0f;
+    float longitude = (float)pendingReportDataRecord.getLong() / 10000000.0f;
+    float altitude = (float)pendingReportDataRecord.getAltitude();
+    CayenneRecord.addGPS(1, latitude, longitude, altitude);
+
+    // Add battery voltage on data channel 2
+    float voltage = (float)pendingReportDataRecord.getBatteryVoltage() * 10 + 3000;
+    CayenneRecord.addAnalogInput(2, voltage);
+    
+    // Add temperature on data channel 3
+    float temp = (float)pendingReportDataRecord.getBoardTemperature();
+    CayenneRecord.addTemperature(3, temp);
+
+    // Copy out the formatted record
+    sendBufferSize = CayenneRecord.copy(sendBuffer);
+    
+    #else
     // copy the pendingReportDataRecord into the sendBuffer
     memcpy(sendBuffer, pendingReportDataRecord.getBuffer(), pendingReportDataRecord.getSize());
     sendBufferSize = pendingReportDataRecord.getSize();
@@ -346,6 +371,7 @@ void updateSendBuffer()
         memcpy(&sendBuffer[sendBufferSize - 1], record.getBuffer(), record.getSize());
         sendBufferSize += record.getSize();
     }
+    #endif
 }
 
 /**
