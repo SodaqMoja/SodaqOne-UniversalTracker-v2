@@ -44,6 +44,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "OverTheAirConfigDataRecord.h"
 #include "GpsFixLiFoRingBuffer.h"
 #include "LIS3DE.h"
+#include "LedColor.h"
 
 //#define DEBUG
 
@@ -90,14 +91,6 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #define debugPrint(x) if (params.getIsDebugOn()) { DEBUG_STREAM.print(x); }
 #define debugPrintln(x) if (params.getIsDebugOn()) { DEBUG_STREAM.println(x); }
-
-
-enum LedColor {
-    NONE = 0,
-    RED,
-    GREEN,
-    BLUE
-};
 
 
 RTCZero rtc;
@@ -148,7 +141,6 @@ void systemSleep();
 void runDefaultFixEvent(uint32_t now);
 void runAlternativeFixEvent(uint32_t now);
 void runLoraModuleSleepExtendEvent(uint32_t now);
-void setLedColor(LedColor color);
 void setGpsActive(bool on);
 void setLoraActive(bool on);
 void setAccelerometerTempSensorActive(bool on);
@@ -835,38 +827,6 @@ void runLoraModuleSleepExtendEvent(uint32_t now)
     setLoraActive(true);
     sodaq_wdt_safe_delay(80);
     setLoraActive(false);
-}
-
-/**
- * Turns the led on according to the given color. Makes no assumptions about the status of the pins
- * i.e. it sets them every time,
- */
-void setLedColor(LedColor color)
-{
-    pinMode(LED_RED, OUTPUT);
-    pinMode(LED_GREEN, OUTPUT);
-    pinMode(LED_BLUE, OUTPUT);
-
-    digitalWrite(LED_RED, HIGH);
-    digitalWrite(LED_GREEN, HIGH);
-    digitalWrite(LED_BLUE, HIGH);
-
-    switch (color)
-    {
-    case NONE:
-        break;
-    case RED:
-        digitalWrite(LED_RED, LOW);
-        break;
-    case GREEN:
-        digitalWrite(LED_GREEN, LOW);
-        break;
-    case BLUE:
-        digitalWrite(LED_BLUE, LOW);
-        break;
-    default:
-        break;
-    }
 }
 
 /**
