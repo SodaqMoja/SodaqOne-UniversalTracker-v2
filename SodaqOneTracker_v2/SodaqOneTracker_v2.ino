@@ -74,7 +74,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #define LORA_STREAM Serial1
 
 #define CONSOLE_BAUD 115200
-#define DEBUG_BAUD 115200 // only used when CONSOLE is different that debug, otherwise console baud is used only
+#define DEBUG_BAUD 115200 // only used when CONSOLE is different than debug, otherwise console baud is used only
 
 #define LORA_MAX_RETRIES 3
 
@@ -137,7 +137,9 @@ void rtcAlarmHandler();
 void initRtcTimer();
 void resetRtcTimerEvents();
 void initSleep();
-LoraInitResult initLora(bool suppressMessages = false);
+bool initLoraAbp(LoraInitConsoleMessages messages);
+bool initLoraOtaa(LoraInitConsoleMessages messages);
+bool initLora(LoraInitConsoleMessages messages, LoraInitJoin join);
 bool initGps();
 void initOnTheMove();
 void systemSleep();
@@ -217,7 +219,7 @@ void setup()
         isGpsInitialized = initGps();
     }
 
-    isLoraInitialized = (initLora() == LORA_INIT_FULL);
+    isLoraInitialized = initLora(LORA_INIT_SHOW_CONSOLE_MESSAGES, LORA_INIT_JOIN);
     if (params.getAccelerationPercentage() > 0) {
         initOnTheMove();
 
@@ -362,7 +364,7 @@ uint8_t inline loRaBeeSend(bool ack, uint8_t port, const uint8_t* payload, uint8
 */
 bool retryInitLora()
 {
-    if (initLora(true) == LORA_INIT_FULL) {
+    if (initLora(LORA_INIT_SKIP_CONSOLE_MESSAGES, LORA_INIT_JOIN)) {
         isLoraInitialized = true;
 
         return true;
@@ -469,90 +471,119 @@ bool convertAndCheckHexArray(uint8_t* result, const char* hex, size_t resultSize
     return foundNonZero;
 }
 
-/**
- * Initializes the lora module.
- * Returns a LoraInitResult for full / partial (device only) success or failure.
-*/
-LoraInitResult initLora(bool supressMessages)
+bool initLoraOtaa(LoraInitConsoleMessages messages)
 {
-    // TODO refactor initLora()
-
-    debugPrintln("Initializing LoRa...");
-
-    if (!supressMessages) {
-        consolePrintln("Initializing LoRa...");
-    }
-
-    LoRaBee.enableReset(LORA_RESET); // set it up before calling init to benefit from auto reset
-
-    LORA_STREAM.begin(LoRaBee.getDefaultBaudRate());
-    if (params.getIsDebugOn()) {
-        LoRaBee.setDiag(DEBUG_STREAM);
-    }
-
-    bool allParametersValid;
-    LoraInitResult result;
-    if (params.getIsOtaaEnabled()) {
         uint8_t devEui[8];
         uint8_t appEui[8];
         uint8_t appKey[16];
 
-        allParametersValid = convertAndCheckHexArray((uint8_t*)devEui, params.getDevAddrOrEUI(), sizeof(devEui))
+    bool allParametersValid = convertAndCheckHexArray((uint8_t*)devEui, params.getDevAddrOrEUI(), sizeof(devEui))
             && convertAndCheckHexArray((uint8_t*)appEui, params.getAppSKeyOrEUI(), sizeof(appEui))
             && convertAndCheckHexArray((uint8_t*)appKey, params.getNwSKeyOrAppKey(), sizeof(appKey));
 
-        // try to initialize the lorabee regardless the validity of the parameters,
-        // in order to allow the sleeping mechanism to work
-        if (LoRaBee.initOTA(LORA_STREAM, devEui, appEui, appKey, params.getIsAdrOn())) {
-            result = LORA_INIT_FULL;
+    // check the parameters first
+    if (!allParametersValid) {
+        if (messages == LORA_INIT_SHOW_CONSOLE_MESSAGES) {
+            consolePrintln("The parameters for LoRa are not valid. LoRa cannot be enabled.");
         }
-        else {
-            if (!supressMessages) {
-                consolePrintln("LoRa init failed!");
+
+        return false;
             }
 
-            result = LORA_INIT_FAIL;
+    if (LoRaBee.initOTA(LORA_STREAM, devEui, appEui, appKey, params.getIsAdrOn(), LORA_RESET)) {
+        if (messages == LORA_INIT_SHOW_CONSOLE_MESSAGES) {
+            consolePrintln("LoRa OTAA init success!");
         }
+
+        return true;
     }
     else {
+        if (messages == LORA_INIT_SHOW_CONSOLE_MESSAGES) {
+            consolePrintln("LoRa OTAA init failed!");
+        }
+
+        return false;
+    }
+}
+
+bool initLoraAbp(LoraInitConsoleMessages messages)
+{
         uint8_t devAddr[4];
         uint8_t appSKey[16];
         uint8_t nwkSKey[16];
 
-        allParametersValid = convertAndCheckHexArray((uint8_t*)devAddr, params.getDevAddrOrEUI(), sizeof(devAddr))
+    bool allParametersValid = convertAndCheckHexArray((uint8_t*)devAddr, params.getDevAddrOrEUI(), sizeof(devAddr))
             && convertAndCheckHexArray((uint8_t*)appSKey, params.getAppSKeyOrEUI(), sizeof(appSKey))
             && convertAndCheckHexArray((uint8_t*)nwkSKey, params.getNwSKeyOrAppKey(), sizeof(nwkSKey));
 
-        // try to initialize the lorabee regardless the validity of the parameters,
-        // in order to allow the sleeping mechanism to work
-        if (LoRaBee.initABP(LORA_STREAM, devAddr, appSKey, nwkSKey, params.getIsAdrOn())) {
-            result = LORA_INIT_FULL;
+    // check the parameters first
+    if (!allParametersValid) {
+        if (messages == LORA_INIT_SHOW_CONSOLE_MESSAGES) {
+            consolePrintln("The parameters for LoRa are not valid. LoRa cannot be enabled.");
         }
-        else {
-            if (!supressMessages) {
-                consolePrintln("LoRa init failed!");
-            }
 
-            result = LORA_INIT_FAIL;
-        }
+        return false;
     }
 
-    if (result && allParametersValid) {
+    if (LoRaBee.initABP(LORA_STREAM, devAddr, appSKey, nwkSKey, params.getIsAdrOn(), LORA_RESET)) {
+        if (messages == LORA_INIT_SHOW_CONSOLE_MESSAGES) {
+            consolePrintln("LoRa ABP init success!");
+        }
+
+        return true;
+        }
+        else {
+        if (messages == LORA_INIT_SHOW_CONSOLE_MESSAGES) {
+            consolePrintln("LoRa ABP init failed!");
+        }
+
+        return false;
+    }
+}
+
+/**
+ * Initializes the lora module according to the given operation (join or skip).
+ * Returns true if the operation was successful.
+*/
+bool initLora(LoraInitConsoleMessages messages, LoraInitJoin join)
+{
+    debugPrintln("Initializing LoRa...");
+
+    if (messages == LORA_INIT_SHOW_CONSOLE_MESSAGES) {
+        consolePrintln("Initializing LoRa...");
+    }
+
+    LORA_STREAM.begin(LoRaBee.getDefaultBaudRate());
+    if (params.getIsDebugOn()) {
+        LoRaBee.setDiag(DEBUG_STREAM);
+            }
+
+    bool result;
+    if (join == LORA_INIT_SKIP_JOIN) {
+        // just reset and check connectivity
+        result = LoRaBee.init(LORA_STREAM, LORA_RESET);
+    }
+    else if (join == LORA_INIT_JOIN) {
+        if (params.getIsOtaaEnabled()) {
+            result = initLoraOtaa(messages);
+        }
+        else {
+            result = initLoraAbp(messages);
+    }
+
+        if (result) {
         if (!params.getIsAdrOn()) {
             LoRaBee.setSpreadingFactor(params.getSpreadingFactor());
         }
 
         LoRaBee.setPowerIndex(params.getPowerIndex());
     }
-    else if (!allParametersValid) {
-        if (!supressMessages) {
-            consolePrintln("The parameters for LoRa are not valid. LoRa cannot be enabled.");
         }
-
-        result = LORA_INIT_DEVICE_ONLY; // override the result from the initialization above
+    else {
+        result = false;
     }
 
-    setLoraActive(false);
+    setLoraActive(false); // make sure it is off
     return result;
 }
 
@@ -1184,7 +1215,7 @@ void getHWEUI()
 {
     // only read the HWEUI once
     if (!isLoraHWEuiInitialized) {
-        if (initLora(true) != LORA_INIT_FAIL) {
+        if (initLora(LORA_INIT_SKIP_CONSOLE_MESSAGES, LORA_INIT_SKIP_JOIN)) {
         sodaq_wdt_safe_delay(10);
         setLoraActive(true);
         uint8_t len = LoRaBee.getHWEUI(loraHWEui, sizeof(loraHWEui));
