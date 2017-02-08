@@ -94,7 +94,7 @@ public:
     // Returns the correct baudrate for the serial port that connects to the device.
     uint32_t getDefaultBaudRate() { return 57600; };
 
-    // Takes care of the init tasks common to both initOTA() and initABP.
+    // Takes care of the initialization tasks common to both initOTA() and initABP().
     // If hardware reset is available, the module is re-set, otherwise it is woken up if possible.
     // Returns true if the module replies to a device reset command.
     bool init(SerialType& stream, int8_t resetPin = -1);
@@ -109,9 +109,6 @@ public:
 
     // Sets the optional "Diagnostics and Debug" stream.
     void setDiag(Stream& stream) { diagStream = &stream; };
-
-    // Enables hardware-resetting the module.
-    void enableHardwareReset(uint8_t resetPin) { this->resetPin = resetPin; };
 
     // Performs a hardware reset (using the reset pin -if available).
     void hardwareReset();
@@ -146,7 +143,7 @@ public:
     bool setSpreadingFactor(uint8_t spreadingFactor);
 
     // Sets the power index (868MHz: 1 to 5 / 915MHz: 5, 7, 8, 9 or 10)
-    // Returns true if succesful.
+    // Returns true if successful.
     bool setPowerIndex(uint8_t powerIndex);
 
     // Sends the command together with the given paramValue (optional)
@@ -166,8 +163,10 @@ public:
     bool setMacParam(const char* paramName, const char* paramValue);
 
 #ifdef ENABLE_SLEEP
+    // Wakes up the module from sleep (if supported).
     void wakeUp();
 
+    // Puts the module to sleep (if supported).
     void sleep();
 #endif
 
@@ -220,6 +219,9 @@ private:
 
     // Used for resetting the module on init.
     int8_t resetPin;
+
+    // Enables hardware-resetting the module.
+    void enableHardwareReset(uint8_t resetPin) { this->resetPin = resetPin; };
 
     // Returns true if the hardware reset pin is set.
     bool isHardwareResetEnabled() { return resetPin >= 0; };
