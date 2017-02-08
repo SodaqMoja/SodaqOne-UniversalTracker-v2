@@ -44,6 +44,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "OverTheAirConfigDataRecord.h"
 #include "GpsFixLiFoRingBuffer.h"
 #include "LIS3DE.h"
+#include "Enums.h"
 
 //#define DEBUG
 
@@ -95,14 +96,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define debugPrintln(x) if (params.getIsDebugOn()) { DEBUG_STREAM.println(x); }
 
 
-enum LedColor {
-    NONE = 0,
-    RED,
-    GREEN,
-    BLUE
-};
-
-
 RTCZero rtc;
 RTCTimer timer;
 UBlox ublox;
@@ -144,7 +137,7 @@ void rtcAlarmHandler();
 void initRtcTimer();
 void resetRtcTimerEvents();
 void initSleep();
-bool initLora(bool suppressMessages = false);
+LoraInitResult initLora(bool suppressMessages = false);
 bool initGps();
 void initOnTheMove();
 void systemSleep();
@@ -224,7 +217,7 @@ void setup()
         isGpsInitialized = initGps();
     }
 
-    isLoraInitialized = initLora();
+    isLoraInitialized = (initLora() == LORA_INIT_FULL);
     if (params.getAccelerationPercentage() > 0) {
         initOnTheMove();
 
@@ -369,7 +362,7 @@ uint8_t inline loRaBeeSend(bool ack, uint8_t port, const uint8_t* payload, uint8
 */
 bool retryInitLora()
 {
-    if (initLora(true)) {
+    if (initLora(true) == LORA_INIT_FULL) {
         isLoraInitialized = true;
 
         return true;
@@ -478,10 +471,12 @@ bool convertAndCheckHexArray(uint8_t* result, const char* hex, size_t resultSize
 
 /**
  * Initializes the lora module.
- * Returns true if successful.
+ * Returns a LoraInitResult for full / partial (device only) success or failure.
 */
-bool initLora(bool supressMessages)
+LoraInitResult initLora(bool supressMessages)
 {
+    // TODO refactor initLora()
+
     debugPrintln("Initializing LoRa...");
 
     if (!supressMessages) {
@@ -496,7 +491,7 @@ bool initLora(bool supressMessages)
     }
 
     bool allParametersValid;
-    bool result;
+    LoraInitResult result;
     if (params.getIsOtaaEnabled()) {
         uint8_t devEui[8];
         uint8_t appEui[8];
@@ -509,14 +504,14 @@ bool initLora(bool supressMessages)
         // try to initialize the lorabee regardless the validity of the parameters,
         // in order to allow the sleeping mechanism to work
         if (LoRaBee.initOTA(LORA_STREAM, devEui, appEui, appKey, params.getIsAdrOn())) {
-            result = true;
+            result = LORA_INIT_FULL;
         }
         else {
             if (!supressMessages) {
                 consolePrintln("LoRa init failed!");
             }
 
-            result = false;
+            result = LORA_INIT_FAIL;
         }
     }
     else {
@@ -531,14 +526,14 @@ bool initLora(bool supressMessages)
         // try to initialize the lorabee regardless the validity of the parameters,
         // in order to allow the sleeping mechanism to work
         if (LoRaBee.initABP(LORA_STREAM, devAddr, appSKey, nwkSKey, params.getIsAdrOn())) {
-            result = true;
+            result = LORA_INIT_FULL;
         }
         else {
             if (!supressMessages) {
                 consolePrintln("LoRa init failed!");
             }
 
-            result = false;
+            result = LORA_INIT_FAIL;
         }
     }
 
@@ -549,19 +544,17 @@ bool initLora(bool supressMessages)
 
         LoRaBee.setPowerIndex(params.getPowerIndex());
     }
-
-    if (!allParametersValid) {
+    else if (!allParametersValid) {
         if (!supressMessages) {
             consolePrintln("The parameters for LoRa are not valid. LoRa cannot be enabled.");
         }
 
-        result = false; // override the result from the initialization above
+        result = LORA_INIT_DEVICE_ONLY; // override the result from the initialization above
     }
 
     setLoraActive(false);
-    return result; // false by default
+    return result;
 }
-
 
 /**
  * Initializes the GPS and leaves it on if succesful.
@@ -1191,7 +1184,7 @@ void getHWEUI()
 {
     // only read the HWEUI once
     if (!isLoraHWEuiInitialized) {
-        if (initLora(true)) {
+        if (initLora(true) != LORA_INIT_FAIL) {
         sodaq_wdt_safe_delay(10);
         setLoraActive(true);
         uint8_t len = LoRaBee.getHWEUI(loraHWEui, sizeof(loraHWEui));
