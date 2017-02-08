@@ -473,13 +473,13 @@ bool convertAndCheckHexArray(uint8_t* result, const char* hex, size_t resultSize
 
 bool initLoraOtaa(LoraInitConsoleMessages messages)
 {
-        uint8_t devEui[8];
-        uint8_t appEui[8];
-        uint8_t appKey[16];
+    uint8_t devEui[8];
+    uint8_t appEui[8];
+    uint8_t appKey[16];
 
     bool allParametersValid = convertAndCheckHexArray((uint8_t*)devEui, params.getDevAddrOrEUI(), sizeof(devEui))
-            && convertAndCheckHexArray((uint8_t*)appEui, params.getAppSKeyOrEUI(), sizeof(appEui))
-            && convertAndCheckHexArray((uint8_t*)appKey, params.getNwSKeyOrAppKey(), sizeof(appKey));
+        && convertAndCheckHexArray((uint8_t*)appEui, params.getAppSKeyOrEUI(), sizeof(appEui))
+        && convertAndCheckHexArray((uint8_t*)appKey, params.getNwSKeyOrAppKey(), sizeof(appKey));
 
     // check the parameters first
     if (!allParametersValid) {
@@ -488,7 +488,7 @@ bool initLoraOtaa(LoraInitConsoleMessages messages)
         }
 
         return false;
-            }
+    }
 
     if (LoRaBee.initOTA(LORA_STREAM, devEui, appEui, appKey, params.getIsAdrOn(), LORA_RESET)) {
         if (messages == LORA_INIT_SHOW_CONSOLE_MESSAGES) {
@@ -508,13 +508,13 @@ bool initLoraOtaa(LoraInitConsoleMessages messages)
 
 bool initLoraAbp(LoraInitConsoleMessages messages)
 {
-        uint8_t devAddr[4];
-        uint8_t appSKey[16];
-        uint8_t nwkSKey[16];
+    uint8_t devAddr[4];
+    uint8_t appSKey[16];
+    uint8_t nwkSKey[16];
 
     bool allParametersValid = convertAndCheckHexArray((uint8_t*)devAddr, params.getDevAddrOrEUI(), sizeof(devAddr))
-            && convertAndCheckHexArray((uint8_t*)appSKey, params.getAppSKeyOrEUI(), sizeof(appSKey))
-            && convertAndCheckHexArray((uint8_t*)nwkSKey, params.getNwSKeyOrAppKey(), sizeof(nwkSKey));
+        && convertAndCheckHexArray((uint8_t*)appSKey, params.getAppSKeyOrEUI(), sizeof(appSKey))
+        && convertAndCheckHexArray((uint8_t*)nwkSKey, params.getNwSKeyOrAppKey(), sizeof(nwkSKey));
 
     // check the parameters first
     if (!allParametersValid) {
@@ -531,8 +531,8 @@ bool initLoraAbp(LoraInitConsoleMessages messages)
         }
 
         return true;
-        }
-        else {
+    }
+    else {
         if (messages == LORA_INIT_SHOW_CONSOLE_MESSAGES) {
             consolePrintln("LoRa ABP init failed!");
         }
@@ -556,7 +556,7 @@ bool initLora(LoraInitConsoleMessages messages, LoraInitJoin join)
     LORA_STREAM.begin(LoRaBee.getDefaultBaudRate());
     if (params.getIsDebugOn()) {
         LoRaBee.setDiag(DEBUG_STREAM);
-            }
+    }
 
     bool result;
     if (join == LORA_INIT_SKIP_JOIN) {
@@ -569,16 +569,16 @@ bool initLora(LoraInitConsoleMessages messages, LoraInitJoin join)
         }
         else {
             result = initLoraAbp(messages);
-    }
+        }
 
         if (result) {
-        if (!params.getIsAdrOn()) {
-            LoRaBee.setSpreadingFactor(params.getSpreadingFactor());
-        }
+            if (!params.getIsAdrOn()) {
+                LoRaBee.setSpreadingFactor(params.getSpreadingFactor());
+            }
 
-        LoRaBee.setPowerIndex(params.getPowerIndex());
-    }
+            LoRaBee.setPowerIndex(params.getPowerIndex());
         }
+    }
     else {
         result = false;
     }
@@ -636,8 +636,8 @@ void initOnTheMove()
     sodaq_wdt_safe_delay(100);
 
     accelerometer.enableInterrupt1(
-        LIS3DE::XHigh | LIS3DE::XLow | LIS3DE::YHigh | LIS3DE::YLow | LIS3DE::ZHigh | LIS3DE::ZLow, 
-        params.getAccelerationPercentage() * 8.0 / 100.0, 
+        LIS3DE::XHigh | LIS3DE::XLow | LIS3DE::YHigh | LIS3DE::YLow | LIS3DE::ZHigh | LIS3DE::ZLow,
+        params.getAccelerationPercentage() * 8.0 / 100.0,
         params.getAccelerationDuration(),
         LIS3DE::MovementRecognition);
 }
@@ -735,7 +735,7 @@ void rtcAlarmHandler()
 }
 
 /**
- * Runs every time acceleration is over the limits 
+ * Runs every time acceleration is over the limits
  * set by the user (if enabled).
 */
 void accelerometerInt1Handler()
@@ -1216,14 +1216,14 @@ void getHWEUI()
     // only read the HWEUI once
     if (!isLoraHWEuiInitialized) {
         if (initLora(LORA_INIT_SKIP_CONSOLE_MESSAGES, LORA_INIT_SKIP_JOIN)) {
-        sodaq_wdt_safe_delay(10);
-        setLoraActive(true);
-        uint8_t len = LoRaBee.getHWEUI(loraHWEui, sizeof(loraHWEui));
+            sodaq_wdt_safe_delay(10);
+            setLoraActive(true);
+            uint8_t len = LoRaBee.getHWEUI(loraHWEui, sizeof(loraHWEui));
 
-        if (len == sizeof(loraHWEui)) {
-            isLoraHWEuiInitialized = true;
+            if (len == sizeof(loraHWEui)) {
+                isLoraHWEuiInitialized = true;
+            }
         }
-    }
 
         setLoraActive(false); // make sure it is disabled in any case
     }
