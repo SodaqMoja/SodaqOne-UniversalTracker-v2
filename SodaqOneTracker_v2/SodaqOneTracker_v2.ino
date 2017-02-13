@@ -345,10 +345,10 @@ void updateSendBuffer()
 uint8_t inline loRaBeeSend(bool ack, uint8_t port, const uint8_t* payload, uint8_t size)
 {
     if (ack) {
-        return LoRaBee.sendReqAck(port, sendBuffer, sendBufferSize, LORA_MAX_RETRIES);
+        return LoRaBee.sendReqAck(port, payload, size, LORA_MAX_RETRIES);
     }
     else {
-        return LoRaBee.send(port, sendBuffer, sendBufferSize);
+        return LoRaBee.send(port, payload, size);
     }
 }
 
