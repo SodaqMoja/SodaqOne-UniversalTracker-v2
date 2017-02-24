@@ -92,7 +92,6 @@ POSSIBILITY OF SUCH DAMAGE.
 #define debugPrint(x) if (params.getIsDebugOn()) { DEBUG_STREAM.print(x); }
 #define debugPrintln(x) if (params.getIsDebugOn()) { DEBUG_STREAM.println(x); }
 
-#define setLedEnabledColor(x) if (params.getIsLedEnabled()) { setLedColor(x); }
 
 RTCZero rtc;
 RTCTimer timer;
@@ -253,7 +252,7 @@ void setup()
     }
 
     if (getGpsFixAndTransmit()) {
-        setLedEnabledColor(GREEN);
+        setLedColor(GREEN);
         sodaq_wdt_safe_delay(800);
     }
 }
@@ -266,7 +265,7 @@ void loop()
 
     if (minuteFlag) {
         if (params.getIsLedEnabled()) {
-            setLedEnabledColor(BLUE);
+            setLedColor(BLUE);
         }
 
         timer.update(); // handle scheduled events
