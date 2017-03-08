@@ -95,6 +95,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #define debugPrint(x) if (params.getIsDebugOn()) { DEBUG_STREAM.print(x); }
 #define debugPrintln(x) if (params.getIsDebugOn()) { DEBUG_STREAM.println(x); }
 
+#ifndef LORA_RESET
+#define LORA_RESET -1
+#endif
 
 RTCZero rtc;
 RTCTimer timer;
