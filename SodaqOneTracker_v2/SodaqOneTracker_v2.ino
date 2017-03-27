@@ -50,7 +50,7 @@ POSSIBILITY OF SUCH DAMAGE.
 //#define DEBUG
 
 #define PROJECT_NAME "SodaqOne Universal Tracker v2"
-#define VERSION "4.2"
+#define VERSION "4.3"
 #define STARTUP_DELAY 5000
 
 // #define DEFAULT_TEMPERATURE_SENSOR_OFFSET 33
@@ -634,6 +634,12 @@ void initOnTheMove()
 {
     pinMode(ACCEL_INT1, INPUT);
     attachInterrupt(ACCEL_INT1, accelerometerInt1Handler, CHANGE);
+
+    // Configure EIC to use GCLK1 which uses XOSC32K, XOSC32K is already running in standby
+    // This has to be done after the first call to attachInterrupt()
+    GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID(GCM_EIC) |
+        GCLK_CLKCTRL_GEN_GCLK1 |
+        GCLK_CLKCTRL_CLKEN;
 
     accelerometer.enable(true, LIS3DE::NormalLowPower10Hz, LIS3DE::XYZ, LIS3DE::Scale8g, true);
     sodaq_wdt_safe_delay(100);
