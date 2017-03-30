@@ -750,7 +750,8 @@ void rtcAlarmHandler()
 void accelerometerInt1Handler()
 {
     if (digitalRead(ACCEL_INT1)) {
-        debugPrintln("On-the-move is triggered");
+        // TODO turn led on for a brief moment (YELLOW)
+        // debugPrintln("On-the-move is triggered");
 
         isOnTheMoveActivated = true;
         lastOnTheMoveActivationTimestamp = getNow();
