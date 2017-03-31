@@ -17,11 +17,4 @@ enum LoraInitJoin {
     LORA_INIT_JOIN
 };
 
-enum LedColor {
-    NONE = 0,
-    RED,
-    GREEN,
-    BLUE
-};
-
 #endif

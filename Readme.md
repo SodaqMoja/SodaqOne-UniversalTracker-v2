@@ -4,7 +4,7 @@ Note: to be able to compile this application you need to add the right board fil
 
 Go to File, Preferences and set the following URL for the additional board files:
 
-http://downloads.sodaq.net/package_sodaq_index.json
+http://downloads.sodaq.net/package_sodaq_samd_index.json
 
 ##  Configuration Menu
 

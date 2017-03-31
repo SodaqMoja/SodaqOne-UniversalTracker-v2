@@ -44,12 +44,13 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "OverTheAirConfigDataRecord.h"
 #include "GpsFixLiFoRingBuffer.h"
 #include "LIS3DE.h"
+#include "LedColor.h"
 #include "Enums.h"
 
 //#define DEBUG
 
 #define PROJECT_NAME "SodaqOne Universal Tracker v2"
-#define VERSION "4.3"
+#define VERSION "4.4"
 #define STARTUP_DELAY 5000
 
 // #define DEFAULT_TEMPERATURE_SENSOR_OFFSET 33
@@ -149,7 +150,6 @@ void systemSleep();
 void runDefaultFixEvent(uint32_t now);
 void runAlternativeFixEvent(uint32_t now);
 void runLoraModuleSleepExtendEvent(uint32_t now);
-void setLedColor(LedColor color);
 void setGpsActive(bool on);
 void setLoraActive(bool on);
 void setAccelerometerTempSensorActive(bool on);
@@ -354,10 +354,10 @@ void updateSendBuffer()
 uint8_t inline loRaBeeSend(bool ack, uint8_t port, const uint8_t* payload, uint8_t size)
 {
     if (ack) {
-        return LoRaBee.sendReqAck(port, sendBuffer, sendBufferSize, LORA_MAX_RETRIES);
+        return LoRaBee.sendReqAck(port, payload, size, LORA_MAX_RETRIES);
     }
     else {
-        return LoRaBee.send(port, sendBuffer, sendBufferSize);
+        return LoRaBee.send(port, payload, size);
     }
 }
 
@@ -750,7 +750,10 @@ void rtcAlarmHandler()
 void accelerometerInt1Handler()
 {
     if (digitalRead(ACCEL_INT1)) {
-        // TODO turn led on for a brief moment (YELLOW)
+        if (params.getIsLedEnabled()) {
+            setLedColor(YELLOW);
+        }
+
         // debugPrintln("On-the-move is triggered");
 
         isOnTheMoveActivated = true;
@@ -872,38 +875,6 @@ void runLoraModuleSleepExtendEvent(uint32_t now)
     setLoraActive(true);
     sodaq_wdt_safe_delay(80);
     setLoraActive(false);
-}
-
-/**
- * Turns the led on according to the given color. Makes no assumptions about the status of the pins
- * i.e. it sets them every time,
- */
-void setLedColor(LedColor color)
-{
-    pinMode(LED_RED, OUTPUT);
-    pinMode(LED_GREEN, OUTPUT);
-    pinMode(LED_BLUE, OUTPUT);
-
-    digitalWrite(LED_RED, HIGH);
-    digitalWrite(LED_GREEN, HIGH);
-    digitalWrite(LED_BLUE, HIGH);
-
-    switch (color)
-    {
-    case NONE:
-        break;
-    case RED:
-        digitalWrite(LED_RED, LOW);
-        break;
-    case GREEN:
-        digitalWrite(LED_GREEN, LOW);
-        break;
-    case BLUE:
-        digitalWrite(LED_BLUE, LOW);
-        break;
-    default:
-        break;
-    }
 }
 
 /**
