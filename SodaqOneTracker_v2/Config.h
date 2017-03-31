@@ -75,6 +75,7 @@ struct ConfigParams
     uint8_t _repeatCount;
     
     uint8_t _isDebugOn;
+    uint8_t _isCayennePayloadEnabled;
 
     uint16_t _crc16;
 
@@ -121,6 +122,7 @@ public:
     uint8_t getRepeatCount() const { return _repeatCount; }
 
     uint8_t getIsDebugOn() const { return _isDebugOn; }
+    uint8_t getIsCayennePayloadEnabled() const { return _isCayennePayloadEnabled; }
 
     static void showConfig(Stream* stream);
     bool checkConfig(Stream& stream);
