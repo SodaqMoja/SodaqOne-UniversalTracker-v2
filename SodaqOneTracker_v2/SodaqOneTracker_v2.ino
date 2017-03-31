@@ -50,7 +50,7 @@ POSSIBILITY OF SUCH DAMAGE.
 //#define DEBUG
 
 #define PROJECT_NAME "SodaqOne Universal Tracker v2"
-#define VERSION "4.3"
+#define VERSION "4.4"
 #define STARTUP_DELAY 5000
 
 // #define DEFAULT_TEMPERATURE_SENSOR_OFFSET 33
