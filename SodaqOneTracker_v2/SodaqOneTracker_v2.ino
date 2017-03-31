@@ -750,7 +750,10 @@ void rtcAlarmHandler()
 void accelerometerInt1Handler()
 {
     if (digitalRead(ACCEL_INT1)) {
-        // TODO turn led on for a brief moment (YELLOW)
+        if (params.getIsLedEnabled()) {
+            setLedColor(YELLOW);
+        }
+
         // debugPrintln("On-the-move is triggered");
 
         isOnTheMoveActivated = true;
