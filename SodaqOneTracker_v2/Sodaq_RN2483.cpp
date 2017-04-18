@@ -184,8 +184,6 @@ uint16_t Sodaq_RN2483::receive(uint8_t* buffer, uint16_t size,
 
     // Note: if the payload has an odd length, the last char is discarded
 
-    buffer[outputIndex] = 0; // terminate the string
-
     debugPrintLn("[receive]: Done");
     return outputIndex;
 }
