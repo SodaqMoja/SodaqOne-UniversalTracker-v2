@@ -218,6 +218,10 @@ private:
     // Used for resetting the module on init.
     int8_t resetPin;
 
+    // This flag keeps track if the next write is the continuation of the current command
+    // A Carriage Return will reset this flag.
+    bool _appendCommand;
+
     // Enables hardware-resetting the module.
     void enableHardwareReset(uint8_t resetPin) { this->resetPin = resetPin; };
 
@@ -231,6 +235,37 @@ private:
     // Reads a line from the device stream into the input buffer.
     // Returns the number of bytes read.
     uint16_t readLn() { return readLn(this->inputBuffer, this->inputBufferSize); };
+
+    // Write a byte
+    size_t writeByte(uint8_t value);
+
+    // Write the command prolog (just for debugging
+    void writeProlog();
+
+    size_t print(const __FlashStringHelper *);
+    size_t print(const String &);
+    size_t print(const char[]);
+    size_t print(char);
+    size_t print(unsigned char, int = DEC);
+    size_t print(int, int = DEC);
+    size_t print(unsigned int, int = DEC);
+    size_t print(long, int = DEC);
+    size_t print(unsigned long, int = DEC);
+    size_t print(double, int = 2);
+    size_t print(const Printable&);
+
+    size_t println(const __FlashStringHelper *);
+    size_t println(const String &s);
+    size_t println(const char[]);
+    size_t println(char);
+    size_t println(unsigned char, int = DEC);
+    size_t println(int, int = DEC);
+    size_t println(unsigned int, int = DEC);
+    size_t println(long, int = DEC);
+    size_t println(unsigned long, int = DEC);
+    size_t println(double, int = 2);
+    size_t println(const Printable&);
+    size_t println(void);
 
     // Waits for the given string. Returns true if the string is received before a timeout.
     // Returns false if a timeout occurs or if another string is received.

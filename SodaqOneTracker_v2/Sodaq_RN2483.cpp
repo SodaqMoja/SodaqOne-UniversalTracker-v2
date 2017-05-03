@@ -26,8 +26,8 @@
 //#define DEBUG
 
 #ifdef DEBUG
-#define debugPrintLn(...) { if (this->diagStream) this->diagStream->println(__VA_ARGS__); }
-#define debugPrint(...) { if (this->diagStream) this->diagStream->print(__VA_ARGS__); }
+#define debugPrintLn(...) do { if (this->diagStream) this->diagStream->println(__VA_ARGS__); } while(0)
+#define debugPrint(...) do { if (this->diagStream) this->diagStream->print(__VA_ARGS__); } while (0)
 #warning "Debug mode is ON"
 #else
 #define debugPrintLn(...)
@@ -51,7 +51,8 @@ Sodaq_RN2483::Sodaq_RN2483() :
     receivedPayloadBufferSize(DEFAULT_RECEIVED_PAYLOAD_BUFFER_SIZE),
     packetReceived(false),
     isRN2903(false),
-    resetPin(-1)
+    resetPin(-1),
+    _appendCommand(false)
 {
 #ifdef USE_DYNAMIC_BUFFER
     this->isBufferInitialized = false;
@@ -194,20 +195,24 @@ uint8_t Sodaq_RN2483::getHWEUI(uint8_t* buffer, uint8_t size)
 {
     debugPrintLn("[getHWEUI]");
 
-    this->loraStream->print(STR_CMD_GET_HWEUI);
-    this->loraStream->print(CRLF);
+    println(STR_CMD_GET_HWEUI);
 
     // TODO move to general "read hex" method
     uint8_t inputIndex = 0;
     uint8_t outputIndex = 0;
 
+    size_t len;
     unsigned long start = millis();
     while (millis() - start < DEFAULT_TIMEOUT) {
         sodaq_wdt_reset();
         debugPrint(".");
 
-        if (readLn() > 0) {
+        len = readLn();
+        if (len > 0) {
             debugPrintLn(this->inputBuffer);
+            if (strncmp(this->inputBuffer, "invalid", 7) == 0) {
+                return 0;
+            }
             while (outputIndex < size
                 && inputIndex + 1 < this->inputBufferSize
                 && this->inputBuffer[inputIndex] != 0
@@ -255,8 +260,7 @@ void Sodaq_RN2483::sleep()
 {
     debugPrintLn("[sleep]");
 
-    this->loraStream->print(STR_CMD_SLEEP);
-    this->loraStream->print(CRLF);
+    println(STR_CMD_SLEEP);
 }
 
 #endif
@@ -277,27 +281,27 @@ uint16_t Sodaq_RN2483::readLn(char* buffer, uint16_t size, uint16_t start)
 // Returns false if a timeout occurs or if another string is received.
 bool Sodaq_RN2483::expectString(const char* str, uint16_t timeout)
 {
-    debugPrint("[expectString] expecting "); debugPrint(str);
+    debugPrint(String("[expectString] (\"") + str + "\") ");
 
+    bool retval = false;
     unsigned long start = millis();
     while (millis() - start < timeout) {
         sodaq_wdt_reset();
         debugPrint(".");
 
         if (readLn() > 0) {
-            debugPrint("("); debugPrint(this->inputBuffer); debugPrint(")");
+            debugPrint(String("--> \"") + this->inputBuffer + "\"");
 
             if (strstr(this->inputBuffer, str) != NULL) {
                 debugPrintLn(" found a match!");
-
-                return true;
+                retval = true;
             }
-
-            return false;
+            break;
         }
     }
 
-    return false;
+    debugPrintLn();
+    return retval;
 }
 
 bool Sodaq_RN2483::expectOK()
@@ -322,6 +326,163 @@ void Sodaq_RN2483::hardwareReset()
     readLn();
 }
 
+void Sodaq_RN2483::writeProlog()
+{
+    if (!_appendCommand) {
+        debugPrint(">> ");
+        _appendCommand = true;
+    }
+}
+
+// Write a byte, as binary data
+size_t Sodaq_RN2483::writeByte(uint8_t value)
+{
+    return this->loraStream->write(value);
+}
+
+size_t Sodaq_RN2483::print(const String& buffer)
+{
+    writeProlog();
+    debugPrint(buffer);
+
+    return this->loraStream->print(buffer);
+}
+
+size_t Sodaq_RN2483::print(const char buffer[])
+{
+    writeProlog();
+    debugPrint(buffer);
+
+    return this->loraStream->print(buffer);
+}
+
+size_t Sodaq_RN2483::print(char value)
+{
+    writeProlog();
+    debugPrint(value);
+
+    return this->loraStream->print(value);
+};
+
+size_t Sodaq_RN2483::print(unsigned char value, int base)
+{
+    writeProlog();
+    debugPrint(value, base);
+
+    return this->loraStream->print(value, base);
+};
+
+size_t Sodaq_RN2483::print(int value, int base)
+{
+    writeProlog();
+    debugPrint(value, base);
+
+    return this->loraStream->print(value, base);
+};
+
+size_t Sodaq_RN2483::print(unsigned int value, int base)
+{
+    writeProlog();
+    debugPrint(value, base);
+
+    return this->loraStream->print(value, base);
+};
+
+size_t Sodaq_RN2483::print(long value, int base)
+{
+    writeProlog();
+    debugPrint(value, base);
+
+    return this->loraStream->print(value, base);
+};
+
+size_t Sodaq_RN2483::print(unsigned long value, int base)
+{
+    writeProlog();
+    debugPrint(value, base);
+
+    return this->loraStream->print(value, base);
+};
+
+size_t Sodaq_RN2483::println(const __FlashStringHelper *ifsh)
+{
+    size_t n = print(ifsh);
+    n += println();
+    return n;
+}
+
+size_t Sodaq_RN2483::println(const String &s)
+{
+    size_t n = print(s);
+    n += println();
+    return n;
+}
+
+size_t Sodaq_RN2483::println(const char c[])
+{
+    size_t n = print(c);
+    n += println();
+    return n;
+}
+
+size_t Sodaq_RN2483::println(char c)
+{
+    size_t n = print(c);
+    n += println();
+    return n;
+}
+
+size_t Sodaq_RN2483::println(unsigned char b, int base)
+{
+    size_t i = print(b, base);
+    return i + println();
+}
+
+size_t Sodaq_RN2483::println(int num, int base)
+{
+    size_t i = print(num, base);
+    return i + println();
+}
+
+size_t Sodaq_RN2483::println(unsigned int num, int base)
+{
+    size_t i = print(num, base);
+    return i + println();
+}
+
+size_t Sodaq_RN2483::println(long num, int base)
+{
+    size_t i = print(num, base);
+    return i + println();
+}
+
+size_t Sodaq_RN2483::println(unsigned long num, int base)
+{
+    size_t i = print(num, base);
+    return i + println();
+}
+
+size_t Sodaq_RN2483::println(double num, int digits)
+{
+    writeProlog();
+    debugPrint(num, digits);
+
+    return this->loraStream->println(num, digits);
+}
+
+size_t Sodaq_RN2483::println(const Printable& x)
+{
+    size_t i = print(x);
+    return i + println();
+}
+
+size_t Sodaq_RN2483::println(void)
+{
+    size_t i = print(CRLF);
+    _appendCommand = false;
+    return i;
+}
+
 // Sends a reset command to the module and waits for the success response (or timeout).
 // Also sets-up some initial parameters like power index, SF and FSB channels.
 // Returns true on success.
@@ -329,8 +490,7 @@ bool Sodaq_RN2483::resetDevice()
 {
     debugPrintLn("[resetDevice]");
 
-    this->loraStream->print(STR_CMD_RESET);
-    this->loraStream->print(CRLF);
+    println(STR_CMD_RESET);
 
     if (expectString(STR_DEVICE_TYPE_RN)) {
         if (strstr(this->inputBuffer, STR_DEVICE_TYPE_RN2483) != NULL) {
@@ -373,11 +533,11 @@ bool Sodaq_RN2483::setFsbChannels(uint8_t fsb)
 
     bool allOk = true;
     for (uint8_t i = 0; i < 72; i++) {
-        this->loraStream->print(STR_CMD_SET_CHANNEL_STATUS);
-        this->loraStream->print(i);
-        this->loraStream->print(" ");
-        this->loraStream->print(BOOL_TO_ONOFF(((i == fsb500kHzChannel) || (i >= first125kHzChannel && i <= last125kHzChannel))));
-        this->loraStream->print(CRLF);
+        print(STR_CMD_SET_CHANNEL_STATUS);
+        print(i);
+        print(" ");
+        print(BOOL_TO_ONOFF(((i == fsb500kHzChannel) || (i >= first125kHzChannel && i <= last125kHzChannel))));
+        println();
 
         allOk &= expectOK();
     }
@@ -425,18 +585,12 @@ bool Sodaq_RN2483::setPowerIndex(uint8_t powerIndex)
 // NOTE: command should include a trailing space if paramValue is set
 bool Sodaq_RN2483::sendCommand(const char* command, const uint8_t* paramValue, uint16_t size)
 {
-    debugPrint("[sendCommand] ");
-    debugPrint(command);
-    debugPrint("[array]");
-
-    this->loraStream->print(command);
-
+    print(command);
     for (uint16_t i = 0; i < size; ++i) {
-        this->loraStream->print(static_cast<char>(NIBBLE_TO_HEX_CHAR(HIGH_NIBBLE(paramValue[i]))));
-        this->loraStream->print(static_cast<char>(NIBBLE_TO_HEX_CHAR(LOW_NIBBLE(paramValue[i]))));
+        print(static_cast<char>(NIBBLE_TO_HEX_CHAR(HIGH_NIBBLE(paramValue[i]))));
+        print(static_cast<char>(NIBBLE_TO_HEX_CHAR(LOW_NIBBLE(paramValue[i]))));
     }
-
-    this->loraStream->print(CRLF);
+    println();
 
     return expectOK();
 }
@@ -447,13 +601,9 @@ bool Sodaq_RN2483::sendCommand(const char* command, const uint8_t* paramValue, u
 // NOTE: command should include a trailing space if paramValue is set
 bool Sodaq_RN2483::sendCommand(const char* command, uint8_t paramValue)
 {
-    debugPrint("[sendCommand] ");
-    debugPrint(command);
-    debugPrintLn(paramValue);
-
-    this->loraStream->print(command);
-    this->loraStream->print(paramValue);
-    this->loraStream->print(CRLF);
+    print(command);
+    print(paramValue);
+    println();
 
     return expectOK();
 }
@@ -464,18 +614,12 @@ bool Sodaq_RN2483::sendCommand(const char* command, uint8_t paramValue)
 // NOTE: command should include a trailing space if paramValue is set
 bool Sodaq_RN2483::sendCommand(const char* command, const char* paramValue)
 {
-    debugPrint("[sendCommand] ");
-    debugPrint(command);
+    print(command);
     if (paramValue != NULL) {
-        debugPrintLn(paramValue);
+        print(paramValue);
     }
 
-    this->loraStream->print(command);
-    if (paramValue != NULL) {
-        this->loraStream->print(paramValue);
-    }
-
-    this->loraStream->print(CRLF);
+    println();
 
     return expectOK();
 }
@@ -486,9 +630,9 @@ bool Sodaq_RN2483::joinNetwork(const char* type)
 {
     debugPrintLn("[joinNetwork]");
 
-    this->loraStream->print(STR_CMD_JOIN);
-    this->loraStream->print(type);
-    this->loraStream->print(CRLF);
+    print(STR_CMD_JOIN);
+    print(type);
+    println();
 
     return expectOK() && expectString(STR_ACCEPTED, 30000);
 }
@@ -499,17 +643,15 @@ bool Sodaq_RN2483::joinNetwork(const char* type)
 // NOTE: paramName should include a trailing space
 bool Sodaq_RN2483::setMacParam(const char* paramName, const uint8_t* paramValue, uint16_t size)
 {
-    debugPrint("[setMacParam] "); debugPrint(paramName); debugPrint("= [array]");
-
-    this->loraStream->print(STR_CMD_SET);
-    this->loraStream->print(paramName);
+    print(STR_CMD_SET);
+    print(paramName);
 
     for (uint16_t i = 0; i < size; ++i) {
-        this->loraStream->print(static_cast<char>(NIBBLE_TO_HEX_CHAR(HIGH_NIBBLE(paramValue[i]))));
-        this->loraStream->print(static_cast<char>(NIBBLE_TO_HEX_CHAR(LOW_NIBBLE(paramValue[i]))));
+        print(static_cast<char>(NIBBLE_TO_HEX_CHAR(HIGH_NIBBLE(paramValue[i]))));
+        print(static_cast<char>(NIBBLE_TO_HEX_CHAR(LOW_NIBBLE(paramValue[i]))));
     }
 
-    this->loraStream->print(CRLF);
+    println();
 
     return expectOK();
 }
@@ -520,15 +662,10 @@ bool Sodaq_RN2483::setMacParam(const char* paramName, const uint8_t* paramValue,
 // NOTE: paramName should include a trailing space
 bool Sodaq_RN2483::setMacParam(const char* paramName, uint8_t paramValue)
 {
-    debugPrint("[setMacParam] ");
-    debugPrint(paramName);
-    debugPrint("= ");
-    debugPrintLn(paramValue);
-
-    this->loraStream->print(STR_CMD_SET);
-    this->loraStream->print(paramName);
-    this->loraStream->print(paramValue);
-    this->loraStream->print(CRLF);
+    print(STR_CMD_SET);
+    print(paramName);
+    print(paramValue);
+    println();
 
     return expectOK();
 }
@@ -539,15 +676,10 @@ bool Sodaq_RN2483::setMacParam(const char* paramName, uint8_t paramValue)
 // NOTE: paramName should include a trailing space
 bool Sodaq_RN2483::setMacParam(const char* paramName, const char* paramValue)
 {
-    debugPrint("[setMacParam] ");
-    debugPrint(paramName);
-    debugPrint("= ");
-    debugPrintLn(paramValue);
-
-    this->loraStream->print(STR_CMD_SET);
-    this->loraStream->print(paramName);
-    this->loraStream->print(paramValue);
-    this->loraStream->print(CRLF);
+    print(STR_CMD_SET);
+    print(paramName);
+    print(paramValue);
+    println();
 
     return expectOK();
 }
@@ -593,19 +725,23 @@ uint8_t Sodaq_RN2483::macTransmit(const char* type, uint8_t port, const uint8_t*
 {
     debugPrintLn("[macTransmit]");
 
-    this->loraStream->print(STR_CMD_MAC_TX);
-    this->loraStream->print(type);
-    this->loraStream->print(port);
-    this->loraStream->print(" ");
+    bool status = false;
+    for (size_t ix = 0; ix < 3 && !status; ix++) {
+        print(STR_CMD_MAC_TX);
+        print(type);
+        print(port);
+        print(" ");
 
-    for (int i = 0; i < size; ++i) {
-        this->loraStream->print(static_cast<char>(NIBBLE_TO_HEX_CHAR(HIGH_NIBBLE(payload[i]))));
-        this->loraStream->print(static_cast<char>(NIBBLE_TO_HEX_CHAR(LOW_NIBBLE(payload[i]))));
+        for (int i = 0; i < size; ++i) {
+            print(static_cast<char>(NIBBLE_TO_HEX_CHAR(HIGH_NIBBLE(payload[i]))));
+            print(static_cast<char>(NIBBLE_TO_HEX_CHAR(LOW_NIBBLE(payload[i]))));
+        }
+
+        println();
+        status = expectOK();
     }
 
-    this->loraStream->print(CRLF);
-
-    if (!expectOK()) {
+    if (!status) {
         return lookupMacTransmitError(this->inputBuffer); // inputBuffer still has the last line read
     }
 
