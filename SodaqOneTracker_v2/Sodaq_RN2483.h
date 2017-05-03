@@ -18,14 +18,13 @@
 * <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _Sodaq_RN2483_h
-#define _Sodaq_RN2483_h
+#ifndef SODAQ_RN2483_H_
+#define SODAQ_RN2483_H_
 
 #include <Arduino.h>
 
 #include <stdint.h>
 #include <Stream.h>
-#include "Switchable_Device.h"
 
 /**
 
@@ -81,11 +80,10 @@ enum MacTransmitErrorCodes
 };
 
 // Provides a simple, abstracted interface to Microchip's RN2483 LoRaWAN module.
-// Implements SwitchableDevice for turning the device On/Off on supported boards.
 //
 // It is strongly suggested to use the static instance that is included with the library (LoRaBee)
 // and not to create a new instance.
-class Sodaq_RN2483 : public SwitchableDevice
+class Sodaq_RN2483
 {
 public:
     // Creates a new Sodaq_RN2483 instance.
@@ -262,4 +260,4 @@ private:
 
 extern Sodaq_RN2483 LoRaBee;
 
-#endif // Sodaq_RN2483
+#endif // SODAQ_RN2483_H
