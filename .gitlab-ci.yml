@@ -4,12 +4,11 @@ variables:
   DOCKER_DRIVER: overlay
   TARGET: SodaqOneTracker_v2
   BINDIR: $CI_PROJECT_DIR/bin
-  JSONURL: http://downloads.sodaq.net/test/package_test_sodaq_samd_index.json
+  JSONURL: http://downloads.sodaq.net/package_sodaq_samd_index.json
   BOARD: SODAQ:samd:sodaq_one
 
 stages:
-  - compile_1_6_13
-  - compile_1_7_0
+  - build_1_6_14
 
 before_script:
   #- env
@@ -19,36 +18,17 @@ before_script:
   - arduino --pref sketchbook.path=$PWD --save-prefs
   - arduino --pref compiler.warning_level=more --save-prefs
   - arduino --pref boardsmanager.additional.urls=${JSONURL} --save-prefs
-  #- mkdir -p /usr/local/share/arduino/hardware/sodaq/samd
-  #- git clone -b v1.6.12.1-sodaq https://github.com/SodaqMoja/SodaqCore-samd.git /usr/local/share/arduino/hardware/sodaq/samd
-  #- git clone https://github.com/SodaqMoja/Sodaq_RN2483.git /usr/local/share/arduino/libraries/Sodaq_RN2483
 
-compile_1_6_13:
-  stage: compile_1_6_13
+build_1_6_14:
+  stage: build_1_6_14
   artifacts:
     paths:
-      - $BINDIR/${TARGET}-1.6.13.bin
+      - $BINDIR/${TARGET}*.bin
   script:
     #- env
     #- pwd
     - rm -rf ${BINDIR}
     - mkdir ${BINDIR}
-    - arduino --install-boards "SODAQ:samd:1.6.13"
+    - arduino --install-boards "SODAQ:samd:1.6.14"
     - arduino --pref build.path=${BINDIR} --verbose --verify --board ${BOARD} ${TARGET}/${TARGET}.ino
-    - mv ${BINDIR}/${TARGET}.ino.bin ${BINDIR}/${TARGET}-1.6.13.bin
-
-compile_1_7_0:
-  stage: compile_1_7_0
-  artifacts:
-    paths:
-      - $BINDIR/${TARGET}-1.7.0.bin
-      - $BINDIR/${TARGET}-1.7.0.hex
-  script:
-    #- env
-    #- pwd
-    - rm -rf ${BINDIR}
-    - mkdir ${BINDIR}
-    - arduino --install-boards "SODAQ:samd:1.7.0"
-    - arduino --pref build.path=${BINDIR} --verbose --verify --board ${BOARD} ${TARGET}/${TARGET}.ino
-    - mv ${BINDIR}/${TARGET}.ino.bin ${BINDIR}/${TARGET}-1.7.0.bin
-    - mv ${BINDIR}/${TARGET}.ino.hex ${BINDIR}/${TARGET}-1.7.0.hex
+    - mv ${BINDIR}/${TARGET}.ino.bin ${BINDIR}/${TARGET}-$(git describe --tags --dirty 2> /dev/null).bin
