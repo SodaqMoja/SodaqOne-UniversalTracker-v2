@@ -168,6 +168,7 @@ void updateConfigOverTheAir();
 void getHWEUI();
 void setDevAddrOrEUItoHWEUI();
 void onConfigReset(void);
+void setupBOD33();
 
 static void printCpuResetCause(Stream& stream);
 static void printBootUpMessage(Stream& stream);
@@ -179,6 +180,13 @@ void setup()
     digitalWrite(ENABLE_PIN_IO, HIGH);
 
     lastResetCause = PM->RCAUSE.reg;
+
+    // In case of reset (this is probably unnecessary)
+    sodaq_wdt_disable();
+  
+    // Setup the BOD33
+    setupBOD33();
+    
     sodaq_wdt_enable(WDT_PERIOD_8X);
     sodaq_wdt_reset();
 
@@ -695,6 +703,26 @@ void systemSleep()
             __WFI(); // SAMD sleep
         }
         interrupts();
+    }
+}
+
+/**
+ * Setup BOD33
+ *
+ * Setup BOD the way we want it.
+ *  - BOD33USERLEVEL = 0x30 - shutdown at 3.07 Volt
+ *  - BOD33_EN = [X] //Enabled
+ *  - BOD33_ACTION = 0x01
+ *  - BOD33_HYST = [X] //Enabled
+ */
+void setupBOD33()
+{
+    SYSCTRL->BOD33.bit.LEVEL = 0x30;    // 3.07 Volt
+    SYSCTRL->BOD33.bit.ACTION = 1;      // Go to Reset
+    SYSCTRL->BOD33.bit.ENABLE = 1;      // Enabled
+    SYSCTRL->BOD33.bit.HYST = 1;        // Hysteresis on
+    while (!SYSCTRL->PCLKSR.bit.B33SRDY) {
+        /* Wait for synchronization */
     }
 }
 
