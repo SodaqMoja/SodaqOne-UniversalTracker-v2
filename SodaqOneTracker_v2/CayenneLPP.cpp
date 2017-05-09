@@ -82,7 +82,6 @@ uint8_t CayenneLPP::addAnalogOutput(uint8_t channel, float value)
     int16_t val = value * 100;
     buffer[cursor++] = channel; 
     buffer[cursor++] = LPP_ANALOG_OUTPUT;
-    buffer[cursor++] = value;
     buffer[cursor++] = val >> 8; 
     buffer[cursor++] = val; 
 
