@@ -1,6 +1,9 @@
 #include "LIS3DE.h"
+#include <math.h>
 
-double mapDouble(double x, double in_min, double in_max, double out_min, double out_max)
+#define _BV(bit) (1 << (bit))
+
+float mapFloat(float x, float in_min, float in_max, float out_min, float out_max)
 {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
@@ -28,16 +31,16 @@ void LIS3DE::setScale(Scale scale)
     _scale = scale;
 }
 
-double LIS3DE::getGsFromScaledValue(int8_t value)
+float LIS3DE::getGsFromScaledValue(int8_t value)
 {
     int8_t scaleMax = getScaleMax(_scale);
-    return mapDouble(value, INT8_MIN, INT8_MAX, -scaleMax, scaleMax);
+    return mapFloat(value, INT8_MIN, INT8_MAX, -scaleMax, scaleMax);
 }
 
-int8_t LIS3DE::getScaledValueFromGs(double gValue)
+int8_t LIS3DE::getScaledValueFromGs(float gValue)
 {
     int8_t scaleMax = getScaleMax(_scale);
-    return trunc(mapDouble(gValue, -scaleMax, scaleMax, INT8_MIN, INT8_MAX));
+    return trunc(mapFloat(gValue, -scaleMax, scaleMax, INT8_MIN, INT8_MAX));
 }
 
 int8_t LIS3DE::getScaleMax(Scale scale)
@@ -86,7 +89,7 @@ void LIS3DE::unsetRegisterBits(Register reg, uint8_t byteValue)
     writeRegister(reg, value);
 }
 
-void LIS3DE::enableInterrupt1(uint8_t axesEvents, double threshold, uint8_t duration, InterruptMode interruptMode)
+void LIS3DE::enableInterrupt1(uint8_t axesEvents, float threshold, uint8_t duration, InterruptMode interruptMode)
 {
     // setup the interrupt
     writeRegister(IG1_CFG, interruptMode | (axesEvents & 0b00111111));
@@ -106,7 +109,7 @@ void LIS3DE::disableInterrupt1()
     unsetRegisterBits(CTRL_REG3, _BV(INT1_IG1));
 }
 
-void LIS3DE::enableInterrupt2(uint8_t axesEvents, double threshold, uint8_t duration, InterruptMode interruptMode)
+void LIS3DE::enableInterrupt2(uint8_t axesEvents, float threshold, uint8_t duration, InterruptMode interruptMode)
 {
     // setup the interrupt
     writeRegister(IG2_CFG, interruptMode | (axesEvents & 0b00111111));
@@ -126,23 +129,23 @@ void LIS3DE::disableInterrupt2()
     unsetRegisterBits(CTRL_REG6, _BV(INT2_IG2));
 }
 
-uint8_t LIS3DE::readRegister(uint8_t reg)
+uint8_t LIS3DE::readRegister(Register reg)
 {
-    Wire.beginTransmission(_address);
-    Wire.write((uint8_t)reg);
-    Wire.endTransmission();
+    _wire.beginTransmission(_address);
+    _wire.write((uint8_t)reg);
+    _wire.endTransmission();
     
-    Wire.requestFrom(_address, 1);
+    _wire.requestFrom(_address, 1);
     
-    return Wire.read();
+    return _wire.read();
 }
 
-void LIS3DE::writeRegister(uint8_t reg, uint8_t value)
+void LIS3DE::writeRegister(Register reg, uint8_t value)
 {
-    Wire.beginTransmission((uint8_t)_address);
+    _wire.beginTransmission((uint8_t)_address);
     
-    Wire.write((uint8_t)reg);
-    Wire.write((uint8_t)value);
+    _wire.write((uint8_t)reg);
+    _wire.write((uint8_t)value);
     
-    Wire.endTransmission();
+    _wire.endTransmission();
 }
