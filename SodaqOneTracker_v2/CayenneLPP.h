@@ -1,3 +1,6 @@
+#ifndef CAYENNELPP_H_
+#define CAYENNELPP_H_
+
 #include <Arduino.h>
 
 #define LPP_DIGITAL_INPUT       0       // 1 byte
@@ -60,3 +63,6 @@ class CayenneLPP {
         uint8_t maxsize;
         uint8_t cursor;
 };
+
+
+#endif /* CAYENNELPP_H_ */
