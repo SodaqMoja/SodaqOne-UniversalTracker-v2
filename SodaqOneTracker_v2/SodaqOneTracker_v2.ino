@@ -43,7 +43,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "GpsFixDataRecord.h"
 #include "OverTheAirConfigDataRecord.h"
 #include "GpsFixLiFoRingBuffer.h"
-#include "LIS3DE.h"
+#include "Sodaq_LIS3DE.h"
 #include "LedColor.h"
 #include "Enums.h"
 #include "CayenneLPP.h"
@@ -105,7 +105,7 @@ RTCZero rtc;
 RTCTimer timer;
 UBlox ublox;
 Time time;
-LIS3DE accelerometer;
+Sodaq_LIS3DE accelerometer;
 
 ReportDataRecord pendingReportDataRecord;
 bool isPendingReportDataRecordNew; // this is set to true only when pendingReportDataRecord is written by the delegate
@@ -674,14 +674,18 @@ void initOnTheMove()
         GCLK_CLKCTRL_GEN_GCLK1 |
         GCLK_CLKCTRL_CLKEN;
 
-    accelerometer.enable(true, LIS3DE::NormalLowPower10Hz, LIS3DE::XYZ, LIS3DE::Scale8g, true);
+    accelerometer.enable(true, 
+        Sodaq_LIS3DE::NormalLowPower10Hz, 
+        Sodaq_LIS3DE::XYZ, 
+        Sodaq_LIS3DE::Scale8g, 
+        true);
     sodaq_wdt_safe_delay(100);
 
     accelerometer.enableInterrupt1(
-        LIS3DE::XHigh | LIS3DE::XLow | LIS3DE::YHigh | LIS3DE::YLow | LIS3DE::ZHigh | LIS3DE::ZLow,
+        Sodaq_LIS3DE::XHigh | Sodaq_LIS3DE::XLow | Sodaq_LIS3DE::YHigh | Sodaq_LIS3DE::YLow | Sodaq_LIS3DE::ZHigh | Sodaq_LIS3DE::ZLow,
         params.getAccelerationPercentage() * 8.0 / 100.0,
         params.getAccelerationDuration(),
-        LIS3DE::MovementRecognition);
+        Sodaq_LIS3DE::MovementRecognition);
 }
 
 /**
@@ -1129,7 +1133,7 @@ void setAccelerometerTempSensorActive(bool on)
     }
 
     if (on) {
-        accelerometer.enable(false, LIS3DE::NormalLowPower100Hz, LIS3DE::XYZ, LIS3DE::Scale2g, true);
+        accelerometer.enable(false, Sodaq_LIS3DE::NormalLowPower100Hz, Sodaq_LIS3DE::XYZ, Sodaq_LIS3DE::Scale2g, true);
         sodaq_wdt_safe_delay(30); // should be enough for initilization and 2 measurement periods
     }
     else {

@@ -7,7 +7,7 @@
 #define LIS3DE_ADDRESS 0b0101000
 
 
-class LIS3DE
+class Sodaq_LIS3DE
 {
     public:
     
@@ -144,7 +144,7 @@ class LIS3DE
             PositionRecognition = 0b11000000
         };
 
-        LIS3DE(TwoWire& wire = Wire, uint8_t address = LIS3DE_ADDRESS);
+        Sodaq_LIS3DE(TwoWire& wire = Wire, uint8_t address = LIS3DE_ADDRESS);
         int8_t getTemperatureDelta();
         void enable(bool isLowPowerEnabled = false, ODR odr = NormalLowPower25Hz, Axes axes = XYZ, Scale scale = Scale2g, bool isTemperatureOn = true);
         void disable();
@@ -155,9 +155,9 @@ class LIS3DE
         void enableInterrupt2(uint8_t axesEvents, float threshold, uint8_t duration, InterruptMode interruptMode = MovementRecognition);
         void disableInterrupt2();
         
-        float getX() { return getGsFromScaledValue(readRegister(LIS3DE::OUT_X)); };
-        float getY() { return getGsFromScaledValue(readRegister(LIS3DE::OUT_Y)); };
-        float getZ() { return getGsFromScaledValue(readRegister(LIS3DE::OUT_Z)); };
+        float getX() { return getGsFromScaledValue(readRegister(Sodaq_LIS3DE::OUT_X)); };
+        float getY() { return getGsFromScaledValue(readRegister(Sodaq_LIS3DE::OUT_Y)); };
+        float getZ() { return getGsFromScaledValue(readRegister(Sodaq_LIS3DE::OUT_Z)); };
 protected:
         TwoWire& _wire;
         uint8_t _address;

@@ -1,4 +1,4 @@
-#include "LIS3DE.h"
+#include "Sodaq_LIS3DE.h"
 #include <math.h>
 
 #define _BV(bit) (1 << (bit))
@@ -8,12 +8,12 @@ float mapFloat(float x, float in_min, float in_max, float out_min, float out_max
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-LIS3DE::LIS3DE(TwoWire& wire, uint8_t address): _wire(wire), _address(address), _scale(Scale2g)
+Sodaq_LIS3DE::Sodaq_LIS3DE(TwoWire& wire, uint8_t address): _wire(wire), _address(address), _scale(Scale2g)
 {
 
 }
 
-int8_t LIS3DE::getTemperatureDelta()
+int8_t Sodaq_LIS3DE::getTemperatureDelta()
 {
     setRegisterBits(CTRL_REG4, _BV(BDU));
     
@@ -25,30 +25,30 @@ int8_t LIS3DE::getTemperatureDelta()
     return value;
 }
 
-void LIS3DE::setScale(Scale scale)
+void Sodaq_LIS3DE::setScale(Scale scale)
 {
     writeRegister(CTRL_REG4, (scale << FS0));
     _scale = scale;
 }
 
-float LIS3DE::getGsFromScaledValue(int8_t value)
+float Sodaq_LIS3DE::getGsFromScaledValue(int8_t value)
 {
     int8_t scaleMax = getScaleMax(_scale);
     return mapFloat(value, INT8_MIN, INT8_MAX, -scaleMax, scaleMax);
 }
 
-int8_t LIS3DE::getScaledValueFromGs(float gValue)
+int8_t Sodaq_LIS3DE::getScaledValueFromGs(float gValue)
 {
     int8_t scaleMax = getScaleMax(_scale);
     return trunc(mapFloat(gValue, -scaleMax, scaleMax, INT8_MIN, INT8_MAX));
 }
 
-int8_t LIS3DE::getScaleMax(Scale scale)
+int8_t Sodaq_LIS3DE::getScaleMax(Scale scale)
 {
     return (1 << (scale + 1));
 }
 
-void LIS3DE::enable(bool isLowPowerEnabled, ODR odr, Axes axes, Scale scale, bool isTemperatureOn)
+void Sodaq_LIS3DE::enable(bool isLowPowerEnabled, ODR odr, Axes axes, Scale scale, bool isTemperatureOn)
 {
     // set odr, mode, enabled axes
     writeRegister(CTRL_REG1, (odr << ODR0) | (isLowPowerEnabled << LPen) | axes);
@@ -65,31 +65,31 @@ void LIS3DE::enable(bool isLowPowerEnabled, ODR odr, Axes axes, Scale scale, boo
     }
 }
 
-void LIS3DE::disable()
+void Sodaq_LIS3DE::disable()
 {
     enable(true, PowerDown, NoAxis, _scale, false);
 }
 
-void LIS3DE::reboot()
+void Sodaq_LIS3DE::reboot()
 {
     writeRegister(CTRL_REG5, _BV(BOOT));
 }
 
-void LIS3DE::setRegisterBits(Register reg, uint8_t byteValue)
+void Sodaq_LIS3DE::setRegisterBits(Register reg, uint8_t byteValue)
 {
     uint8_t value = readRegister(reg);
     value |= byteValue;
     writeRegister(reg, value);
 }
 
-void LIS3DE::unsetRegisterBits(Register reg, uint8_t byteValue)
+void Sodaq_LIS3DE::unsetRegisterBits(Register reg, uint8_t byteValue)
 {
     uint8_t value = readRegister(reg);
     value &= ~byteValue;
     writeRegister(reg, value);
 }
 
-void LIS3DE::enableInterrupt1(uint8_t axesEvents, float threshold, uint8_t duration, InterruptMode interruptMode)
+void Sodaq_LIS3DE::enableInterrupt1(uint8_t axesEvents, float threshold, uint8_t duration, InterruptMode interruptMode)
 {
     // setup the interrupt
     writeRegister(IG1_CFG, interruptMode | (axesEvents & 0b00111111));
@@ -103,13 +103,13 @@ void LIS3DE::enableInterrupt1(uint8_t axesEvents, float threshold, uint8_t durat
     setRegisterBits(CTRL_REG3, _BV(INT1_IG1));
 }
 
-void LIS3DE::disableInterrupt1()
+void Sodaq_LIS3DE::disableInterrupt1()
 {
     // disable interrupt generator 1
     unsetRegisterBits(CTRL_REG3, _BV(INT1_IG1));
 }
 
-void LIS3DE::enableInterrupt2(uint8_t axesEvents, float threshold, uint8_t duration, InterruptMode interruptMode)
+void Sodaq_LIS3DE::enableInterrupt2(uint8_t axesEvents, float threshold, uint8_t duration, InterruptMode interruptMode)
 {
     // setup the interrupt
     writeRegister(IG2_CFG, interruptMode | (axesEvents & 0b00111111));
@@ -123,13 +123,13 @@ void LIS3DE::enableInterrupt2(uint8_t axesEvents, float threshold, uint8_t durat
     setRegisterBits(CTRL_REG6, _BV(INT2_IG2));
 }
 
-void LIS3DE::disableInterrupt2()
+void Sodaq_LIS3DE::disableInterrupt2()
 {
     // enable interrupt generator 2 on INT2
     unsetRegisterBits(CTRL_REG6, _BV(INT2_IG2));
 }
 
-uint8_t LIS3DE::readRegister(Register reg)
+uint8_t Sodaq_LIS3DE::readRegister(Register reg)
 {
     _wire.beginTransmission(_address);
     _wire.write((uint8_t)reg);
@@ -140,7 +140,7 @@ uint8_t LIS3DE::readRegister(Register reg)
     return _wire.read();
 }
 
-void LIS3DE::writeRegister(Register reg, uint8_t value)
+void Sodaq_LIS3DE::writeRegister(Register reg, uint8_t value)
 {
     _wire.beginTransmission((uint8_t)_address);
     
