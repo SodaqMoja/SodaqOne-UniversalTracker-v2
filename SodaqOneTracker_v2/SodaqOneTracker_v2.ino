@@ -278,9 +278,11 @@ void setup()
 
 void loop()
 {
-    // Reset watchdog
-    sodaq_wdt_reset();
-    sodaq_wdt_flag = false;
+    if (sodaq_wdt_flag) {
+        // Reset watchdog
+        sodaq_wdt_reset();
+        sodaq_wdt_flag = false;
+    }
 
     if (minuteFlag) {
         if (params.getIsLedEnabled()) {
