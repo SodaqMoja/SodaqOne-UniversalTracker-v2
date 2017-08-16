@@ -51,7 +51,7 @@ POSSIBILITY OF SUCH DAMAGE.
 //#define DEBUG
 
 #define PROJECT_NAME "SodaqOne Universal Tracker v2"
-#define VERSION "5.0.1"
+#define VERSION "5.0.2"
 #define STARTUP_DELAY 5000
 
 // #define DEFAULT_TEMPERATURE_SENSOR_OFFSET 33
@@ -107,6 +107,7 @@ bool isPendingReportDataRecordNew; // this is set to true only when pendingRepor
 volatile bool minuteFlag;
 volatile bool isOnTheMoveActivated;
 volatile uint32_t lastOnTheMoveActivationTimestamp;
+volatile bool updateOnTheMoveTimestampFlag;
 
 static uint8_t lastResetCause;
 static bool isGpsInitialized;
@@ -267,6 +268,11 @@ void loop()
         sodaq_wdt_flag = false;
 
         LoRa.loopHandler();
+    }
+
+    if (updateOnTheMoveTimestampFlag) {
+        lastOnTheMoveActivationTimestamp = getNow();
+        updateOnTheMoveTimestampFlag = false;
     }
 
     if (minuteFlag) {
@@ -649,7 +655,7 @@ void accelerometerInt1Handler()
         // debugPrintln("On-the-move is triggered");
 
         isOnTheMoveActivated = true;
-        lastOnTheMoveActivationTimestamp = getNow();
+        updateOnTheMoveTimestampFlag = true;
     }
 }
 
