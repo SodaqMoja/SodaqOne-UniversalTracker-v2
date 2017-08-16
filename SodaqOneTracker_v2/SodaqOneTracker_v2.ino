@@ -51,7 +51,7 @@ POSSIBILITY OF SUCH DAMAGE.
 //#define DEBUG
 
 #define PROJECT_NAME "SodaqOne Universal Tracker v2"
-#define VERSION "5.0.0"
+#define VERSION "5.0.1"
 #define STARTUP_DELAY 5000
 
 // #define DEFAULT_TEMPERATURE_SENSOR_OFFSET 33
@@ -435,7 +435,7 @@ bool initLora(LoraInitConsoleMessages messages, LoraInitJoin join)
     LoRa.setOtaaOn(params.getIsOtaaEnabled());
     LoRa.setAdrOn(params.getIsAdrOn());
     LoRa.setAckOn(params.getIsAckOn());
-    LoRa.setReconnectOnTransmissionOn(true);
+    LoRa.setReconnectOnTransmissionOn(params.getShouldRetryConnectionOnSend());
     LoRa.setDefaultLoRaPort(params.getLoraPort());
     LoRa.setRepeatTransmissionCount(params.getRepeatCount());
     LoRa.setSpreadingFactor(params.getSpreadingFactor());
