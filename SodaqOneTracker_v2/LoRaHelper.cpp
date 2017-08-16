@@ -147,10 +147,19 @@ uint8_t LoRaHelper::transmit(uint8_t* buffer, uint8_t size, int16_t overrideLoRa
 
     if (!isInitialized()) {
         // check for a retry
-        if (!_isReconnectOnTransmissionOn || !join()) {
-            debugPrintln("Failed to reconnect! Hardware-resetting the modem and scheduling a retransmission (if applicable).");
-            _rn2483->hardwareReset();
-            retransmissionUpdateOnFailure();
+        if (_isReconnectOnTransmissionOn) {
+            // check if join is sucessfull before continuing
+            if (!join()) {
+                debugPrintln("Failed to reconnect! Hardware-resetting the modem and scheduling a retransmission (if applicable).");
+                _rn2483->hardwareReset();
+                retransmissionUpdateOnFailure();
+
+                return result;
+            }
+        }
+        else {
+            debugPrintln("LoRa is not initialized and \"Reconnect-On-Transmission\" is not enabled. Giving up.");
+
             return result;
         }
     }
