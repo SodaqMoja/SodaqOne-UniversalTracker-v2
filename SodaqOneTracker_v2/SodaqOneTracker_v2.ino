@@ -345,8 +345,8 @@ void updateSendBuffer()
         cayenneRecord.addGPS(1, latitude, longitude, altitude);
 
         // Add battery voltage on data channel 2
-        float voltage = (float)pendingReportDataRecord.getBatteryVoltage() * 10 + 3000;
-        cayenneRecord.addAnalogInput(2, voltage);
+        float millivolt = (float)pendingReportDataRecord.getBatteryVoltage() * 10 + 3000;
+        cayenneRecord.addAnalogInput(2, millivolt / 1000.0);
 
         // Add temperature on data channel 3
         float temp = (float)pendingReportDataRecord.getBoardTemperature();
