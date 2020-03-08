@@ -71,7 +71,7 @@ private:
     uint32_t _lastTransmissionAttemptTimestamp;
     uint32_t (*_getNow)();
 
-    bool convertAndCheckHexArray(uint8_t* result, const char* hex, size_t resultSize);
+    bool convertAndCheckHexArray(uint8_t* result, const char* hex, size_t resultSize, bool allowZero = false);
     bool joinAbp();
     bool joinOtaa();
     void retransmissionUpdateOnSuccess();
