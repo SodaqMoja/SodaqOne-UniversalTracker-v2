@@ -1,14 +1,13 @@
 #ifndef LIS3DE_H_
 #define LIS3DE_H_
 
-#include "Arduino.h"
+#include <Arduino.h>
 #include <Wire.h>
 
 #define LIS3DE_ADDRESS 0b0101000
 
-#define _BV(bit) (1 << (bit))
 
-class LIS3DE
+class Sodaq_LIS3DE
 {
     public:
     
@@ -54,7 +53,7 @@ class LIS3DE
             ACT_DUR = 0x3F
         };
         
-        enum Bits {
+        enum RegisterBits {
             // CTRL_REG1
             ODR0 = 4,
             LPen = 3,
@@ -130,12 +129,12 @@ class LIS3DE
         };
 
         enum AxesEvents {
-            ZHigh = _BV(5),
-            ZLow = _BV(4),
-            YHigh = _BV(3),
-            YLow = _BV(2),
-            XHigh = _BV(1),
-            XLow = _BV(0)
+            ZHigh = 0b00100000,
+            ZLow = 0b00010000,
+            YHigh = 0b00001000,
+            YLow = 0b00000100,
+            XHigh = 0b00000010,
+            XLow = 0b00000001
         };
 
         enum InterruptMode {
@@ -145,25 +144,20 @@ class LIS3DE
             PositionRecognition = 0b11000000
         };
 
-        LIS3DE(TwoWire& wire = Wire, uint8_t address = LIS3DE_ADDRESS);
+        Sodaq_LIS3DE(TwoWire& wire = Wire, uint8_t address = LIS3DE_ADDRESS);
         int8_t getTemperatureDelta();
         void enable(bool isLowPowerEnabled = false, ODR odr = NormalLowPower25Hz, Axes axes = XYZ, Scale scale = Scale2g, bool isTemperatureOn = true);
         void disable();
         void reboot();
 
-        void enableInterrupt1(uint8_t axesEvents, double threshold, uint8_t duration, InterruptMode interruptMode = MovementRecognition);
+        void enableInterrupt1(uint8_t axesEvents, float threshold, uint8_t duration, InterruptMode interruptMode = MovementRecognition);
         void disableInterrupt1();
-        void enableInterrupt2(uint8_t axesEvents, double threshold, uint8_t duration, InterruptMode interruptMode = MovementRecognition);
+        void enableInterrupt2(uint8_t axesEvents, float threshold, uint8_t duration, InterruptMode interruptMode = MovementRecognition);
         void disableInterrupt2();
         
-        double getX() { return getGsFromScaledValue(readRegister(LIS3DE::OUT_X)); };
-        double getY() { return getGsFromScaledValue(readRegister(LIS3DE::OUT_Y)); };
-        double getZ() { return getGsFromScaledValue(readRegister(LIS3DE::OUT_Z)); };
-
-        uint8_t readRegister(uint8_t reg);
-        void writeRegister(uint8_t reg, uint8_t value);
-        void setRegisterBits(Register reg, uint8_t byteValue);
-        void unsetRegisterBits(Register reg, uint8_t byteValue);
+        float getX() { return getGsFromScaledValue(readRegister(Sodaq_LIS3DE::OUT_X)); };
+        float getY() { return getGsFromScaledValue(readRegister(Sodaq_LIS3DE::OUT_Y)); };
+        float getZ() { return getGsFromScaledValue(readRegister(Sodaq_LIS3DE::OUT_Z)); };
 protected:
         TwoWire& _wire;
         uint8_t _address;
@@ -171,8 +165,13 @@ protected:
 
         void setScale(Scale scale);
 
-        double getGsFromScaledValue(int8_t value);
-        int8_t getScaledValueFromGs(double gValue);
+        uint8_t readRegister(Register reg);
+        void writeRegister(Register reg, uint8_t value);
+        void setRegisterBits(Register reg, uint8_t byteValue);
+        void unsetRegisterBits(Register reg, uint8_t byteValue);
+
+        float getGsFromScaledValue(int8_t value);
+        int8_t getScaledValueFromGs(float gValue);
         int8_t getScaleMax(Scale scale);
 };
 

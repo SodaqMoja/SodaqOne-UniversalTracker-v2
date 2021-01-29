@@ -37,7 +37,11 @@ enum LedColor {
     NONE = 0,
     RED,
     GREEN,
-    BLUE
+    BLUE,
+    YELLOW,
+    MAGENTA,
+    CYAN,
+    WHITE,
 };
 
 void setLedColor(LedColor color);

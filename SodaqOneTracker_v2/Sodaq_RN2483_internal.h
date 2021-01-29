@@ -1,25 +1,25 @@
 /*
-* Copyright (c) 2015 SODAQ. All rights reserved.
-*
-* This file is part of MicrochipLoRaWAN.
-*
-* MicrochipLoRaWAN is free software: you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as
-* published by the Free Software Foundation, either version 3 of
-* the License, or(at your option) any later version.
-*
-* MicrochipLoRaWAN is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public
-* License along with MicrochipLoRaWAN.  If not, see
-* <http://www.gnu.org/licenses/>.
+    Copyright (c) 2015 SODAQ. All rights reserved.
+
+    This file is part of Sodaq_RN2483.
+
+    Sodaq_RN2483 is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as
+    published by the Free Software Foundation, either version 3 of
+    the License, or(at your option) any later version.
+
+    Sodaq_RN2483 is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public
+    License along with Sodaq_RN2483.  If not, see
+    <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _STRINGLITERALS_h
-#define _STRINGLITERALS_h
+#ifndef SODAQ_RN2483_INTERNAL_H_
+#define SODAQ_RN2483_INTERNAL_H_
 
 #define CRLF "\r\n"
 

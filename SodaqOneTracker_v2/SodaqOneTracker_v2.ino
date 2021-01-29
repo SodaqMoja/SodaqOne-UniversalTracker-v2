@@ -33,7 +33,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <Wire.h>
 #include "RTCTimer.h"
 #include "RTCZero.h"
-#include "Sodaq_RN2483.h"
+#include "LoRaHelper.h"
 #include "Sodaq_wdt.h"
 #include "Config.h"
 #include "BootMenu.h"
@@ -43,13 +43,15 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "GpsFixDataRecord.h"
 #include "OverTheAirConfigDataRecord.h"
 #include "GpsFixLiFoRingBuffer.h"
-#include "LIS3DE.h"
+#include "Sodaq_LIS3DE.h"
 #include "LedColor.h"
+#include "Enums.h"
+#include "CayenneLPP.h"
 
 //#define DEBUG
 
 #define PROJECT_NAME "SodaqOne Universal Tracker v2"
-#define VERSION "4.1"
+#define VERSION "5.0.2"
 #define STARTUP_DELAY 5000
 
 // #define DEFAULT_TEMPERATURE_SENSOR_OFFSET 33
@@ -73,7 +75,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #define CONSOLE_STREAM SerialUSB
 #define LORA_STREAM Serial1
 
-#define LORA_MAX_RETRIES 3
+#define CONSOLE_BAUD 115200
+#define DEBUG_BAUD 115200 // only used when CONSOLE is different than debug, otherwise console baud is used only
 
 #define NIBBLE_TO_HEX_CHAR(i) ((i <= 9) ? ('0' + i) : ('A' - 10 + i))
 #define HIGH_NIBBLE(i) ((i >> 4) & 0x0F)
@@ -82,22 +85,21 @@ POSSIBILITY OF SUCH DAMAGE.
 // macro to do compile time sanity checks / assertions
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
 
-// version of "hex to bin" macro that supports both lower and upper case
-#define HEX_CHAR_TO_NIBBLE(c) ((c >= 'a') ? (c - 'a' + 0x0A) : ((c >= 'A') ? (c - 'A' + 0x0A) : (c - '0')))
-#define HEX_PAIR_TO_BYTE(h, l) ((HEX_CHAR_TO_NIBBLE(h) << 4) + HEX_CHAR_TO_NIBBLE(l))
-
 #define consolePrint(x) CONSOLE_STREAM.print(x)
 #define consolePrintln(x) CONSOLE_STREAM.println(x)
 
 #define debugPrint(x) if (params.getIsDebugOn()) { DEBUG_STREAM.print(x); }
 #define debugPrintln(x) if (params.getIsDebugOn()) { DEBUG_STREAM.println(x); }
 
+#ifndef LORA_RESET
+#define LORA_RESET -1
+#endif
 
 RTCZero rtc;
 RTCTimer timer;
 UBlox ublox;
 Time time;
-LIS3DE accelerometer;
+Sodaq_LIS3DE accelerometer;
 
 ReportDataRecord pendingReportDataRecord;
 bool isPendingReportDataRecordNew; // this is set to true only when pendingReportDataRecord is written by the delegate
@@ -105,22 +107,19 @@ bool isPendingReportDataRecordNew; // this is set to true only when pendingRepor
 volatile bool minuteFlag;
 volatile bool isOnTheMoveActivated;
 volatile uint32_t lastOnTheMoveActivationTimestamp;
+volatile bool updateOnTheMoveTimestampFlag;
 
 static uint8_t lastResetCause;
 static bool isGpsInitialized;
-static bool isLoraInitialized;
 static bool isRtcInitialized;
 static bool isDeviceInitialized;
 static bool isOnTheMoveInitialized;
 static int64_t rtcEpochDelta; // set in setNow() and used in getGpsFixAndTransmit() for correcting time in loop
 
-static uint8_t receiveBuffer[16];
-static uint8_t receiveBufferSize;
-static uint8_t sendBuffer[51];
-static uint8_t sendBufferSize;
 static uint8_t loraHWEui[8];
 static bool isLoraHWEuiInitialized;
 
+CayenneLPP cayenneRecord(51);
 
 void setup();
 void loop();
@@ -134,7 +133,7 @@ void rtcAlarmHandler();
 void initRtcTimer();
 void resetRtcTimerEvents();
 void initSleep();
-bool initLora(bool suppressMessages = false);
+bool initLora(LoraInitConsoleMessages messages, LoraInitJoin join);
 bool initGps();
 void initOnTheMove();
 void systemSleep();
@@ -142,21 +141,18 @@ void runDefaultFixEvent(uint32_t now);
 void runAlternativeFixEvent(uint32_t now);
 void runLoraModuleSleepExtendEvent(uint32_t now);
 void setGpsActive(bool on);
-void setLoraActive(bool on);
 void setAccelerometerTempSensorActive(bool on);
-bool convertAndCheckHexArray(uint8_t* result, const char* hex, size_t resultSize);
 bool isAlternativeFixEventApplicable();
 bool isCurrentTimeOfDayWithin(uint32_t daySecondsFrom, uint32_t daySecondsTo);
 void delegateNavPvt(NavigationPositionVelocityTimeSolution* NavPvt);
 bool getGpsFixAndTransmit();
 uint8_t getBatteryVoltage();
 int8_t getBoardTemperature();
-void updateSendBuffer();
-void transmit();
-void updateConfigOverTheAir();
+void updateConfigOverTheAir(const uint8_t* buffer, uint16_t size);
 void getHWEUI();
 void setDevAddrOrEUItoHWEUI();
 void onConfigReset(void);
+void setupBOD33();
 
 static void printCpuResetCause(Stream& stream);
 static void printBootUpMessage(Stream& stream);
@@ -168,12 +164,19 @@ void setup()
     digitalWrite(ENABLE_PIN_IO, HIGH);
 
     lastResetCause = PM->RCAUSE.reg;
+
+    // In case of reset (this is probably unnecessary)
+    sodaq_wdt_disable();
+  
+    // Setup the BOD33
+    setupBOD33();
+    
     sodaq_wdt_enable(WDT_PERIOD_8X);
     sodaq_wdt_reset();
 
-    CONSOLE_STREAM.begin(115200);
-    if (CONSOLE_STREAM != DEBUG_STREAM) {
-        DEBUG_STREAM.begin(115200);
+    CONSOLE_STREAM.begin(CONSOLE_BAUD);
+    if ((long)&CONSOLE_STREAM != (long)&DEBUG_STREAM) {
+        DEBUG_STREAM.begin(DEBUG_BAUD);
     }
 
     setLedColor(RED);
@@ -201,8 +204,8 @@ void setup()
     sodaq_wdt_enable(WDT_PERIOD_8X);
 
     // make sure the debug option is honored
-    if (params.getIsDebugOn() && (CONSOLE_STREAM != DEBUG_STREAM)) {
-        DEBUG_STREAM.begin(115200);
+    if (params.getIsDebugOn() && ((long)&CONSOLE_STREAM != (long)&DEBUG_STREAM)) {
+        DEBUG_STREAM.begin(DEBUG_BAUD);
     }
 
     // make sure the GPS status honors the new user params
@@ -213,7 +216,7 @@ void setup()
         isGpsInitialized = initGps();
     }
 
-    isLoraInitialized = initLora();
+    initLora(LORA_INIT_SHOW_CONSOLE_MESSAGES, LORA_INIT_JOIN);
     if (params.getAccelerationPercentage() > 0) {
         initOnTheMove();
 
@@ -259,9 +262,18 @@ void setup()
 
 void loop()
 {
-    // Reset watchdog
-    sodaq_wdt_reset();
-    sodaq_wdt_flag = false;
+    if (sodaq_wdt_flag) {
+        // Reset watchdog
+        sodaq_wdt_reset();
+        sodaq_wdt_flag = false;
+
+        LoRa.loopHandler();
+    }
+
+    if (updateOnTheMoveTimestampFlag) {
+        lastOnTheMoveActivationTimestamp = getNow();
+        updateOnTheMoveTimestampFlag = false;
+    }
 
     if (minuteFlag) {
         if (params.getIsLedEnabled()) {
@@ -311,105 +323,70 @@ int8_t getBoardTemperature()
 }
 
 /**
- * Updates the "sendBuffer" using the current "pendingReportDataRecord" and its "sendBufferSize".
+ * Transmits the current data (using the current "pendingReportDataRecord").
  */
-void updateSendBuffer()
-{
-    // copy the pendingReportDataRecord into the sendBuffer
-    memcpy(sendBuffer, pendingReportDataRecord.getBuffer(), pendingReportDataRecord.getSize());
-    sendBufferSize = pendingReportDataRecord.getSize();
-
-    // copy the previous coordinates if applicable (-1 because one coordinate is already in the report record)
-    GpsFixDataRecord record;
-    for (uint8_t i = 0; i < params.getCoordinateUploadCount() - 1; i++) {
-        record.init();
-
-        // (skip first record because it is in the report record already)
-        if (!gpsFixLiFoRingBuffer_peek(1 + i, &record)) {
-            break;
-        }
-
-        if (!record.isValid()) {
-            break;
-        }
-
-        record.updatePreviousFixValue(pendingReportDataRecord.getTimestamp());
-        memcpy(&sendBuffer[sendBufferSize - 1], record.getBuffer(), record.getSize());
-        sendBufferSize += record.getSize();
-    }
-}
-
-/**
- * Simple wrapper method for sending with/without ack.
-*/
-uint8_t inline loRaBeeSend(bool ack, uint8_t port, const uint8_t* payload, uint8_t size)
-{
-    if (ack) {
-        return LoRaBee.sendReqAck(port, payload, size, LORA_MAX_RETRIES);
-    }
-    else {
-        return LoRaBee.send(port, payload, size);
-    }
-}
-
-/**
- * Retries the initialization of Lora (suppressing the messages to the console).
- * When successful return true and sets the global variable isLoraInitialized.
-*/
-bool retryInitLora()
-{
-    if (initLora(true)) {
-        isLoraInitialized = true;
-
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Sends the current sendBuffer through lora (if enabled).
- * Repeats the transmitions according to params.getRepeatCount().
-*/
 void transmit()
 {
-    if (!isLoraInitialized) {
-        // check for a retry
-        if (!params.getShouldRetryConnectionOnSend() || !retryInitLora()) {
-            return;
-        }
+    if (params.getIsCayennePayloadEnabled()) {
+        // Reset the record
+        cayenneRecord.reset();
+
+        // Add GPS record on data channel 1
+        float latitude = (float)pendingReportDataRecord.getLat() / 10000000.0f;
+        float longitude = (float)pendingReportDataRecord.getLong() / 10000000.0f;
+        float altitude = (float)pendingReportDataRecord.getAltitude();
+        cayenneRecord.addGPS(1, latitude, longitude, altitude);
+
+        // Add battery voltage on data channel 2
+        float voltage = 3.0 + 0.01 * pendingReportDataRecord.getBatteryVoltage();
+        cayenneRecord.addAnalogInput(2, voltage);
+
+        // Add temperature on data channel 3
+        float temp = (float)pendingReportDataRecord.getBoardTemperature();
+        cayenneRecord.addTemperature(3, temp);
+
+        // Copy out the formatted record
+        LoRa.transmit(cayenneRecord.getBuffer(), cayenneRecord.getSize());
     }
+    else {
+        uint8_t sendBuffer[51];
+        uint8_t sendBufferSize = 0;
 
-    setLoraActive(true);
+        // copy the pendingReportDataRecord into the sendBuffer
+        memcpy(sendBuffer, pendingReportDataRecord.getBuffer(), pendingReportDataRecord.getSize());
+        sendBufferSize = pendingReportDataRecord.getSize();
 
-    for (uint8_t i = 0; i < 1 + params.getRepeatCount(); i++) {
-        if (loRaBeeSend(params.getIsAckOn(), params.getLoraPort(), sendBuffer, sendBufferSize) != 0) {
-            debugPrintln("There was an error while transmitting through LoRaWAN.");
-        }
-        else {
-            debugPrintln("Data transmitted successfully.");
+        // copy the previous coordinates if applicable (-1 because one coordinate is already in the report record)
+        GpsFixDataRecord record;
+        for (uint8_t i = 0; i < params.getCoordinateUploadCount() - 1; i++) {
+            record.init();
 
-            uint16_t size = LoRaBee.receive(receiveBuffer, sizeof(receiveBuffer));
-            receiveBufferSize = size;
-
-            if (size > 0) {
-                debugPrintln("Received OTA Configuration.");
-                updateConfigOverTheAir();
+            // (skip first record because it is in the report record already)
+            if (!gpsFixLiFoRingBuffer_peek(1 + i, &record)) {
+                break;
             }
-        }
-    }
 
-    setLoraActive(false);
+            if (!record.isValid()) {
+                break;
+            }
+
+            record.updatePreviousFixValue(pendingReportDataRecord.getTimestamp());
+            memcpy(&sendBuffer[sendBufferSize - 1], record.getBuffer(), record.getSize());
+            sendBufferSize += record.getSize();
+        }
+
+        LoRa.transmit(sendBuffer, sendBufferSize);
+    }
 }
 
 /**
- * Uses the "receiveBuffer" (received from LoRaWAN) to update the configuration.
+* Uses the "receiveBuffer" (received from LoRaWAN) to update the configuration.
 */
-void updateConfigOverTheAir()
+void updateConfigOverTheAir(const uint8_t* buffer, uint16_t size)
 {
     OverTheAirConfigDataRecord record;
     record.init();
-    record.copyFrom(receiveBuffer, receiveBufferSize);
+    record.copyFrom(buffer, size);
 
     if (record.isValid()) {
         params._defaultFixInterval = record.getDefaultFixInterval();
@@ -424,7 +401,7 @@ void updateConfigOverTheAir()
 
         params._gpsFixTimeout = record.getGpsFixTimeout();
 
-        params.commit();
+        params.commit(true);
         debugPrintln("OTAA Config commited!");
 
         // apply the rtc timer changes
@@ -436,119 +413,56 @@ void updateConfigOverTheAir()
 }
 
 /**
- * Converts the given hex array and returns true if it is valid hex and non-zero.
- * "hex" is assumed to be 2*resultSize bytes.
- */
-bool convertAndCheckHexArray(uint8_t* result, const char* hex, size_t resultSize)
-{
-    bool foundNonZero = false;
-
-    uint16_t inputIndex = 0;
-    uint16_t outputIndex = 0;
-
-    // stop at the first string termination char, or if output buffer is over
-    while (outputIndex < resultSize && hex[inputIndex] != 0 && hex[inputIndex + 1] != 0) {
-        if (!isxdigit(hex[inputIndex]) || !isxdigit(hex[inputIndex + 1])) {
-            return false;
-        }
-
-        result[outputIndex] = HEX_PAIR_TO_BYTE(hex[inputIndex], hex[inputIndex + 1]);
-
-        if (result[outputIndex] > 0) {
-            foundNonZero = true;
-        }
-
-        inputIndex += 2;
-        outputIndex++;
-    }
-
-    return foundNonZero;
-}
-
-/**
- * Initializes the lora module.
- * Returns true if successful.
+    Initializes the lora module according to the given operation (join or skip).
+    Returns true if the operation was successful.
 */
-bool initLora(bool supressMessages)
+bool initLora(LoraInitConsoleMessages messages, LoraInitJoin join)
 {
     debugPrintln("Initializing LoRa...");
 
-    if (!supressMessages) {
+    if (messages == LORA_INIT_SHOW_CONSOLE_MESSAGES) {
         consolePrintln("Initializing LoRa...");
     }
 
-    LORA_STREAM.begin(LoRaBee.getDefaultBaudRate());
     if (params.getIsDebugOn()) {
         LoRaBee.setDiag(DEBUG_STREAM);
+        LoRa.setDiag(DEBUG_STREAM);
     }
 
-    bool allParametersValid;
     bool result;
-    if (params.getIsOtaaEnabled()) {
-        uint8_t devEui[8];
-        uint8_t appEui[8];
-        uint8_t appKey[16];
 
-        allParametersValid = convertAndCheckHexArray((uint8_t*)devEui, params.getDevAddrOrEUI(), sizeof(devEui))
-            && convertAndCheckHexArray((uint8_t*)appEui, params.getAppSKeyOrEUI(), sizeof(appEui))
-            && convertAndCheckHexArray((uint8_t*)appKey, params.getNwSKeyOrAppKey(), sizeof(appKey));
+    LORA_STREAM.begin(LoRaBee.getDefaultBaudRate());
+    result = LoRaBee.init(LORA_STREAM, LORA_RESET);
+    LoRaBee.setReceiveCallback(updateConfigOverTheAir);
+    LoRa.init(LoRaBee, getNow);
 
-        // try to initialize the lorabee regardless the validity of the parameters,
-        // in order to allow the sleeping mechanism to work
-        if (LoRaBee.initOTA(LORA_STREAM, devEui, appEui, appKey, params.getIsAdrOn())) {
-            result = true;
-        }
-        else {
-            if (!supressMessages) {
-                consolePrintln("LoRa init failed!");
+    // set keys and parameters
+    LoRa.setKeys(params.getDevAddrOrEUI(), params.getAppSKeyOrEUI(), params.getNwSKeyOrAppKey());
+    LoRa.setOtaaOn(params.getIsOtaaEnabled());
+    LoRa.setAdrOn(params.getIsAdrOn());
+    LoRa.setAckOn(params.getIsAckOn());
+    LoRa.setReconnectOnTransmissionOn(params.getShouldRetryConnectionOnSend());
+    LoRa.setDefaultLoRaPort(params.getLoraPort());
+    LoRa.setRepeatTransmissionCount(params.getRepeatCount());
+    LoRa.setSpreadingFactor(params.getSpreadingFactor());
+    LoRa.setPowerIndex(params.getPowerIndex());
+
+    if (join == LORA_INIT_JOIN) {
+        result = LoRa.join();
+
+        if (messages == LORA_INIT_SHOW_CONSOLE_MESSAGES) {
+            if (result) {
+                consolePrintln("LoRa initialized.");
             }
-
-            result = false;
-        }
-    }
-    else {
-        uint8_t devAddr[4];
-        uint8_t appSKey[16];
-        uint8_t nwkSKey[16];
-
-        allParametersValid = convertAndCheckHexArray((uint8_t*)devAddr, params.getDevAddrOrEUI(), sizeof(devAddr))
-            && convertAndCheckHexArray((uint8_t*)appSKey, params.getAppSKeyOrEUI(), sizeof(appSKey))
-            && convertAndCheckHexArray((uint8_t*)nwkSKey, params.getNwSKeyOrAppKey(), sizeof(nwkSKey));
-
-        // try to initialize the lorabee regardless the validity of the parameters,
-        // in order to allow the sleeping mechanism to work
-        if (LoRaBee.initABP(LORA_STREAM, devAddr, appSKey, nwkSKey, params.getIsAdrOn())) {
-            result = true;
-        }
-        else {
-            if (!supressMessages) {
-                consolePrintln("LoRa init failed!");
+            else {
+                consolePrintln("LoRa initialization failed!");
             }
-
-            result = false;
         }
     }
 
-    if (result && allParametersValid) {
-        if (!params.getIsAdrOn()) {
-            LoRaBee.setSpreadingFactor(params.getSpreadingFactor());
-        }
-
-        LoRaBee.setPowerIndex(params.getPowerIndex());
-    }
-
-    if (!allParametersValid) {
-        if (!supressMessages) {
-            consolePrintln("The parameters for LoRa are not valid. LoRa cannot be enabled.");
-        }
-
-        result = false; // override the result from the initialization above
-    }
-
-    setLoraActive(false);
-    return result; // false by default
+    LoRa.setActive(false); // make sure it is off
+    return result;
 }
-
 
 /**
  * Initializes the GPS and leaves it on if succesful.
@@ -595,14 +509,24 @@ void initOnTheMove()
     pinMode(ACCEL_INT1, INPUT);
     attachInterrupt(ACCEL_INT1, accelerometerInt1Handler, CHANGE);
 
-    accelerometer.enable(true, LIS3DE::NormalLowPower10Hz, LIS3DE::XYZ, LIS3DE::Scale8g, true);
+    // Configure EIC to use GCLK1 which uses XOSC32K, XOSC32K is already running in standby
+    // This has to be done after the first call to attachInterrupt()
+    GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID(GCM_EIC) |
+        GCLK_CLKCTRL_GEN_GCLK1 |
+        GCLK_CLKCTRL_CLKEN;
+
+    accelerometer.enable(true, 
+        Sodaq_LIS3DE::NormalLowPower10Hz, 
+        Sodaq_LIS3DE::XYZ, 
+        Sodaq_LIS3DE::Scale8g, 
+        true);
     sodaq_wdt_safe_delay(100);
 
     accelerometer.enableInterrupt1(
-        LIS3DE::XHigh | LIS3DE::XLow | LIS3DE::YHigh | LIS3DE::YLow | LIS3DE::ZHigh | LIS3DE::ZLow, 
-        params.getAccelerationPercentage() * 8.0 / 100.0, 
+        Sodaq_LIS3DE::XHigh | Sodaq_LIS3DE::XLow | Sodaq_LIS3DE::YHigh | Sodaq_LIS3DE::YLow | Sodaq_LIS3DE::ZHigh | Sodaq_LIS3DE::ZLow,
+        params.getAccelerationPercentage() * 8.0 / 100.0,
         params.getAccelerationDuration(),
-        LIS3DE::MovementRecognition);
+        Sodaq_LIS3DE::MovementRecognition);
 }
 
 /**
@@ -624,6 +548,26 @@ void systemSleep()
             __WFI(); // SAMD sleep
         }
         interrupts();
+    }
+}
+
+/**
+ * Setup BOD33
+ *
+ * Setup BOD the way we want it.
+ *  - BOD33USERLEVEL = 0x30 - shutdown at 3.07 Volt
+ *  - BOD33_EN = [X] //Enabled
+ *  - BOD33_ACTION = 0x01
+ *  - BOD33_HYST = [X] //Enabled
+ */
+void setupBOD33()
+{
+    SYSCTRL->BOD33.bit.LEVEL = 0x30;    // 3.07 Volt
+    SYSCTRL->BOD33.bit.ACTION = 1;      // Go to Reset
+    SYSCTRL->BOD33.bit.ENABLE = 1;      // Enabled
+    SYSCTRL->BOD33.bit.HYST = 1;        // Hysteresis on
+    while (!SYSCTRL->PCLKSR.bit.B33SRDY) {
+        /* Wait for synchronization */
     }
 }
 
@@ -698,16 +642,20 @@ void rtcAlarmHandler()
 }
 
 /**
- * Runs every time acceleration is over the limits 
+ * Runs every time acceleration is over the limits
  * set by the user (if enabled).
 */
 void accelerometerInt1Handler()
 {
     if (digitalRead(ACCEL_INT1)) {
-        debugPrintln("On-the-move is triggered");
+        if (params.getIsLedEnabled()) {
+            setLedColor(YELLOW);
+        }
+
+        // debugPrintln("On-the-move is triggered");
 
         isOnTheMoveActivated = true;
-        lastOnTheMoveActivationTimestamp = getNow();
+        updateOnTheMoveTimestampFlag = true;
     }
 }
 
@@ -745,7 +693,7 @@ void resetRtcTimerEvents()
     }
 
     // if lora is not enabled, schedule an event that takes care of extending the sleep time of the module
-    if (!isLoraInitialized) {
+    if (!LoRa.isInitialized()) {
         timer.every(24 * 60 * 60, runLoraModuleSleepExtendEvent); // once a day
     }
 }
@@ -822,9 +770,7 @@ void runLoraModuleSleepExtendEvent(uint32_t now)
 {
     debugPrintln("Extending LoRa module sleep period.");
 
-    setLoraActive(true);
-    sodaq_wdt_safe_delay(80);
-    setLoraActive(false);
+    LoRa.extendSleep();
 }
 
 /**
@@ -858,7 +804,7 @@ void delegateNavPvt(NavigationPositionVelocityTimeSolution* NavPvt)
 
     // check that the fix is OK and that it is a 3d fix or GNSS + dead reckoning combined
     if (((NavPvt->flags & GPS_FIX_FLAGS) == GPS_FIX_FLAGS) && ((NavPvt->fixType == 3) || (NavPvt->fixType == 4))) {
-        pendingReportDataRecord.setCourse(NavPvt->heading);
+        pendingReportDataRecord.setCourse((constrain(NavPvt->heading, 0, INT32_MAX) * 255) / (360 * 100000)); // scale and range to 0..255
         pendingReportDataRecord.setAltitude((int16_t)constrain(NavPvt->hMSL / 1000, INT16_MIN, INT16_MAX)); // mm to m
         pendingReportDataRecord.setLat(NavPvt->lat);
         pendingReportDataRecord.setLong(NavPvt->lon);
@@ -944,7 +890,6 @@ bool getGpsFixAndTransmit()
         debugPrintln();
     }
 
-    updateSendBuffer();
     transmit();
 
     return isSuccessful;
@@ -1026,7 +971,7 @@ void setAccelerometerTempSensorActive(bool on)
     }
 
     if (on) {
-        accelerometer.enable(false, LIS3DE::NormalLowPower100Hz, LIS3DE::XYZ, LIS3DE::Scale2g, true);
+        accelerometer.enable(false, Sodaq_LIS3DE::NormalLowPower100Hz, Sodaq_LIS3DE::XYZ, Sodaq_LIS3DE::Scale2g, true);
         sodaq_wdt_safe_delay(30); // should be enough for initilization and 2 measurement periods
     }
     else {
@@ -1146,14 +1091,13 @@ void getHWEUI()
 {
     // only read the HWEUI once
     if (!isLoraHWEuiInitialized) {
-        initLora(true);
-        sodaq_wdt_safe_delay(10);
-        setLoraActive(true);
-        uint8_t len = LoRaBee.getHWEUI(loraHWEui, sizeof(loraHWEui));
-        setLoraActive(false);
+        if (initLora(LORA_INIT_SKIP_CONSOLE_MESSAGES, LORA_INIT_SKIP_JOIN)) {
+            sodaq_wdt_safe_delay(10);
+            uint8_t len = LoRa.getHWEUI(loraHWEui, sizeof(loraHWEui));
 
-        if (len == sizeof(loraHWEui)) {
-            isLoraHWEuiInitialized = true;
+            if (len == sizeof(loraHWEui)) {
+                isLoraHWEuiInitialized = true;
+            }
         }
     }
 }
