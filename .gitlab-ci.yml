@@ -8,7 +8,7 @@ variables:
   BOARD: SODAQ:samd:sodaq_one
 
 stages:
-  - build_1_6_14
+  - build_1_6_20
 
 before_script:
   #- env
@@ -19,8 +19,8 @@ before_script:
   - arduino --pref compiler.warning_level=more --save-prefs
   - arduino --pref boardsmanager.additional.urls=${JSONURL} --save-prefs
 
-build_1_6_14:
-  stage: build_1_6_14
+build_1_6_20:
+  stage: build_1_6_20
   artifacts:
     paths:
       - $BINDIR/${TARGET}*.bin
@@ -29,6 +29,6 @@ build_1_6_14:
     #- pwd
     - rm -rf ${BINDIR}
     - mkdir ${BINDIR}
-    - arduino --install-boards "SODAQ:samd:1.6.14"
+    - arduino --install-boards "SODAQ:samd:1.6.20"
     - arduino --pref build.path=${BINDIR} --verbose --verify --board ${BOARD} ${TARGET}/${TARGET}.ino
     - mv ${BINDIR}/${TARGET}.ino.bin ${BINDIR}/${TARGET}-$(git describe --tags --dirty 2> /dev/null).bin
