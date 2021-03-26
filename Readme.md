@@ -1,3 +1,5 @@
+[![CI](https://github.com/SodaqMoja/SodaqOne-UniversalTracker-v2/workflows/CI/badge.svg)](https://github.com/SodaqMoja/SodaqOne-UniversalTracker-v2/actions?query=workflow%3ACI)
+
 # SODAQ ONE Tracker v2
 
 Note: to be able to compile this application you need to add the right board file to your Arduino IDE.
@@ -18,12 +20,12 @@ LoRa HWEUI: 0004A30B00198185
 
 
 Commands:
-  Reset DevAddr / DevEUI to the Hardware EUI (EUI): 
-  Commit Settings (CS): 
+  Reset DevAddr / DevEUI to the Hardware EUI (EUI):
+  Commit Settings (CS):
 
 Settings:
 
-GPS                       
+GPS
   GPS (OFF=0 / ON=1)         (gps=): 1
   Fix Interval (min)         (fi=): 15
   Alt. Fix Interval (min)    (afi=): 0
@@ -35,13 +37,13 @@ GPS
   Minimum sat count          (sat=): 4
   Num Coords to Upload       (num=): 1
 
-On-the-move Functionality 
+On-the-move Functionality
   Acceleration% (100% = 8g)  (acc=): 0
   Acceleration Duration      (acd=): 0
   Fix Interval (min)         (acf=): 1
   Timeout (min)              (act=): 10
 
-LoRa                      
+LoRa
   OTAA Mode (OFF=0 / ON=1)   (otaa=): 0
   Retry conn. (OFF=0 / ON=1) (retry=): 0
   ADR (OFF=0 / ON=1)         (adr=): 1
@@ -54,11 +56,11 @@ LoRa
   NWSKey / AppKey            (key=): 00000000000000000000000000000000
   Repeat Count               (rep=): 0
 
-Misc                      
+Misc
   Temperature Sensor Offset  (temp=): 20
   Status LED (OFF=0 / ON=1)  (led=): 0
   Debug (OFF=0 / ON=1)       (dbg=): 0
-Enter command: 
+Enter command:
 ```
 
 
