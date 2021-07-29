@@ -108,6 +108,7 @@ The firmware supports, except for the default and alternative fix intervals, a t
 
 
 #### LoRa Frame content
+The following frame content is available if Cayenne is *disabled*
 
 | Description | Length |
 | --- | --- |
@@ -126,6 +127,16 @@ The firmware supports, except for the default and alternative fix intervals, a t
 | Lat | long (4) |
 | Long | long(4) |
 
+With Cayenne enabled, the frame content is:
+| Description | Length |
+| --- | --- |
+| Lat | int32 (4) |
+| Long | int32 (4) |
+| Altitude (MSL in meters) | int16 (2) |
+| Battery voltage | uint8 (1) |
+| Board Temperature (degrees celcius) | int8 (1) |
+
+With Cayenne enabled, all values are converted to floats before being transmitted.
 
 
 #### Remote (over the air) re-configuration
